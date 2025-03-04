@@ -1,6 +1,30 @@
 import { unstable_noStore as noStore } from "next/cache"
-import type { SearchResult } from "@/node_modules/yahoo-finance2/dist/esm/src/modules/search"
 import { headers } from 'next/headers'
+
+// 自定义 SearchResult 接口替代 yahoo-finance2 的类型
+export interface SearchQuote {
+  symbol: string
+  shortname: string
+  exchange: string
+  type: string
+  [key: string]: any
+}
+
+export interface SearchNews {
+  title: string
+  link: string
+  publisher: string
+  publish_time: string
+  [key: string]: any
+}
+
+export interface SearchResult {
+  quotes: SearchQuote[]
+  news: SearchNews[]
+  count: number
+  totalTime?: number
+  [key: string]: any
+}
 
 export async function fetchStockSearch(ticker: string, newsCount: number = 5) {
   console.log('ticker', ticker)

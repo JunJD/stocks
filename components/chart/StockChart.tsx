@@ -2,13 +2,30 @@ import { cn } from "@/lib/utils"
 import { fetchChartData } from "@/lib/yahoo-finance/fetchChartData"
 import type { Interval, Range } from "@/types/yahoo-finance"
 import AreaClosedChart from "./AreaClosedChart"
-import yahooFinance from "yahoo-finance2"
 import { fetchQuote } from "@/lib/yahoo-finance/fetchQuote"
 
 interface StockGraphProps {
   ticker: string
   range: Range
   interval: Interval
+}
+
+// 定义 Quote 接口以匹配 fetchQuote 返回的数据结构
+interface Quote {
+  symbol: string
+  shortName?: string
+  fullExchangeName?: string
+  currency?: string
+  regularMarketPrice?: number
+  regularMarketChange?: number
+  regularMarketChangePercent?: number
+  hasPrePostMarketData?: boolean
+  postMarketPrice?: number
+  postMarketChange?: number
+  postMarketChangePercent?: number
+  preMarketPrice?: number
+  preMarketChange?: number
+  preMarketChangePercent?: number
 }
 
 const rangeTextMapping = {
@@ -32,7 +49,7 @@ export default async function StockChart({
   const chartData = await fetchChartData(ticker, range, interval)
   const quoteData = await fetchQuote(ticker)
 
-  const [chart, quote] = await Promise.all([chartData, quoteData])
+  const [chart, quote] = await Promise.all([chartData, quoteData]) as [any, Quote]
 
   const priceChange =
     chart.quotes.length &&
@@ -42,11 +59,11 @@ export default async function StockChart({
     )
 
   const ChartQuotes = chart.quotes
-    .map((quote) => ({
+    .map((quote: any) => ({
       date: quote.date,
       close: quote.close?.toFixed(2),
     }))
-    .filter((quote) => quote.close !== undefined && quote.date !== null)
+    .filter((quote: any) => quote.close !== undefined && quote.date !== null)
 
   return (
     <div className="h-[27.5rem] w-full">
@@ -70,7 +87,7 @@ export default async function StockChart({
                 {quote.regularMarketPrice?.toFixed(2)}
               </span>
               <span className="font-semibold">
-                {quote.regularMarketChange &&
+                {quote.regularMarketChange !== undefined &&
                 quote.regularMarketChangePercent !== undefined ? (
                   quote.regularMarketChange > 0 ? (
                     <span className="text-green-800 dark:text-green-400">
@@ -95,7 +112,7 @@ export default async function StockChart({
                     {quote.postMarketPrice.toFixed(2)}
                   </span>
                   <span>
-                    {quote.postMarketChange &&
+                    {quote.postMarketChange !== undefined &&
                     quote.postMarketChangePercent !== undefined ? (
                       quote.postMarketChange > 0 ? (
                         <span className="text-green-800 dark:text-green-400">
@@ -120,7 +137,7 @@ export default async function StockChart({
                     {quote.preMarketPrice.toFixed(2)}
                   </span>
                   <span>
-                    {quote.preMarketChange &&
+                    {quote.preMarketChange !== undefined &&
                     quote.preMarketChangePercent !== undefined ? (
                       quote.preMarketChange > 0 ? (
                         <span className="text-green-800 dark:text-green-400">

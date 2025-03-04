@@ -1,28 +1,26 @@
-import yahooFinance from "yahoo-finance2"
 import { Card, CardContent } from "../../../../components/ui/card"
 import ReadMoreText from "../../../../components/ui/read-more-text"
 import Link from "next/link"
+import { fetchQuoteSummary } from "@/lib/yahoo-finance/fetchQuoteSummary"
 
 export default async function CompanySummaryCard({
   ticker,
 }: {
   ticker: string
 }) {
-  const data = await yahooFinance.quoteSummary(ticker, {
-    modules: ["summaryProfile"],
-  })
+  const data = await fetchQuoteSummary(ticker)
 
-  if (!data.summaryProfile) {
+  if (!data.summaryDetail) {
     return null
   }
-  const {
-    longBusinessSummary,
-    sector,
-    industryDisp,
-    country,
-    fullTimeEmployees,
-    website,
-  } = data.summaryProfile
+  
+  // 提取需要的公司信息
+  const longBusinessSummary = data.longBusinessSummary || ""
+  const sector = data.sector || ""
+  const industryDisp = data.industry || ""
+  const country = data.country || ""
+  const fullTimeEmployees = data.fullTimeEmployees || 0
+  const website = data.website || ""
 
   return (
     <Card className="group relative min-h-max overflow-hidden">

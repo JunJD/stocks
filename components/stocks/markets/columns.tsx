@@ -1,9 +1,18 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import type { Quote } from "@/node_modules/yahoo-finance2/dist/esm/src/modules/quote"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+
+// 自定义 Quote 接口替代 yahoo-finance2 的类型
+export interface Quote {
+  symbol: string
+  shortName?: string
+  regularMarketPrice?: number
+  regularMarketChange?: number
+  regularMarketChangePercent?: number
+  [key: string]: any
+}
 
 export const columns: ColumnDef<Quote>[] = [
   {
