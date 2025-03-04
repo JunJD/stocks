@@ -1,10 +1,22 @@
 "use client"
 
 import { CellContext, ColumnDef } from "@tanstack/react-table"
-
-import type { ScreenerQuote } from "@/node_modules/yahoo-finance2/dist/esm/src/modules/screener"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+
+// 替换yahoo-finance2的类型
+export interface ScreenerQuote {
+  symbol: string
+  shortName: string
+  regularMarketPrice: number
+  regularMarketChange: number
+  regularMarketChangePercent: number
+  regularMarketVolume: number
+  averageDailyVolume3Month?: number
+  marketCap?: number
+  epsTrailingTwelveMonths?: number
+  [key: string]: any
+}
 
 export const columns: ColumnDef<ScreenerQuote>[] = [
   {
@@ -67,7 +79,10 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: () => <div className="text-right">Price</div>,
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
-      const price = parseFloat(row.getValue("regularMarketPrice"))
+      const price = row.getValue("regularMarketPrice") as number
+      if (price === undefined || price === null) {
+        return <div className="text-right">N/A</div>
+      }
       return <div className="text-right">{price.toFixed(2)}</div>
     },
   },
@@ -77,7 +92,10 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: () => <div className="text-right">Change</div>,
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
-      const marketChange = parseFloat(row.getValue("regularMarketChange"))
+      const marketChange = row.getValue("regularMarketChange") as number
+      if (marketChange === undefined || marketChange === null) {
+        return <div className="text-right">N/A</div>
+      }
       return (
         <div className="flex justify-end">
           <div
@@ -101,9 +119,10 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: () => <div className="text-right">% Change</div>,
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
-      const marketChangePercent = parseFloat(
-        row.getValue("regularMarketChangePercent")
-      )
+      const marketChangePercent = row.getValue("regularMarketChangePercent") as number
+      if (marketChangePercent === undefined || marketChangePercent === null) {
+        return <div className="text-right">N/A</div>
+      }
       return (
         <div className="flex justify-end">
           <div
@@ -127,7 +146,10 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: () => <div className="text-right">Volume</div>,
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
-      const volume = parseFloat(row.getValue("regularMarketVolume"))
+      const volume = row.getValue("regularMarketVolume") as number
+      if (volume === undefined || volume === null) {
+        return <div className="text-right">N/A</div>
+      }
       const formatVolume = (volume: number): string => {
         if (volume >= 1000000) {
           return `${(volume / 1000000).toFixed(3)}M`
@@ -145,7 +167,10 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: () => <div className="text-right">Avg Volume</div>,
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
-      const volume = parseFloat(row.getValue("averageDailyVolume3Month"))
+      const volume = row.getValue("averageDailyVolume3Month") as number
+      if (volume === undefined || volume === null) {
+        return <div className="text-right">N/A</div>
+      }
       const formatVolume = (volume: number): string => {
         if (volume >= 1000000) {
           return `${(volume / 1000000).toFixed(3)}M`
@@ -163,7 +188,10 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: () => <div className="text-right">Market Cap</div>,
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
-      const marketCap = parseFloat(row.getValue("marketCap"))
+      const marketCap = row.getValue("marketCap") as number
+      if (marketCap === undefined || marketCap === null) {
+        return <div className="text-right">N/A</div>
+      }
       const formatMarketCap = (marketCap: number): string => {
         if (marketCap >= 1_000_000_000_000) {
           return `${(marketCap / 1_000_000_000_000).toFixed(3)}T`

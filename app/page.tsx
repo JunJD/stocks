@@ -1,5 +1,4 @@
 import { DataTable } from "@/components/stocks/markets/data-table"
-import yahooFinance from "yahoo-finance2"
 import {
   Card,
   CardContent,
@@ -19,6 +18,7 @@ import {
   validateRange,
 } from "@/lib/yahoo-finance/fetchChartData"
 import { fetchStockSearch } from "@/lib/yahoo-finance/fetchStockSearch"
+import { headers } from "next/headers"
 
 function isMarketOpen() {
   const now = new Date()
@@ -107,14 +107,46 @@ export default async function Home({
   )
   const news = await fetchStockSearch("^DJI", 1)
 
-  const promises = tickers.map(({ symbol }) =>
-    yahooFinance.quoteCombine(symbol)
-  )
+  // 使用我们的API获取股票数据
+  const fetchStockData = async (symbol: string) => {
+    try {
+      // 获取当前请求的 host
+      const headersList = headers()
+      const host = headersList.get('host') || 'localhost:3000' 
+      const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
+      
+      // 构建URL
+      const url = `${protocol}://${host}/api/py/stock/quote?ticker=${encodeURIComponent(symbol)}`
+      
+      // 发送请求
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching stock data: ${response.statusText}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error(`Error fetching data for ${symbol}:`, error)
+      return {
+        symbol: symbol,
+        shortName: `Error loading ${symbol}`,
+        regularMarketPrice: 0,
+        regularMarketChange: 0,
+        regularMarketChangePercent: 0,
+        regularMarketDayHigh: 0,
+        regularMarketDayLow: 0,
+        regularMarketVolume: 0
+      }
+    }
+  }
+
+  const promises = tickers.map(({ symbol }) => fetchStockData(symbol))
   const results = await Promise.all(promises)
 
   const resultsWithTitles = results.map((result, index) => ({
     ...result,
-    shortName: tickers[index].shortName,
+    shortName: result.shortName || tickers[index].shortName,
   }))
 
   const marketSentiment = getMarketSentiment(

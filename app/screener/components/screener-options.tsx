@@ -1,8 +1,6 @@
-import type { PredefinedScreenerModules } from "@/node_modules/yahoo-finance2/dist/esm/src/modules/screener"
-
 type ScreenerOption = {
   label: string
-  value: PredefinedScreenerModules
+  value: string
 }
 
 export const ScreenerOptions: ScreenerOption[] = [
