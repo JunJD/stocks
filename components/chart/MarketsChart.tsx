@@ -57,11 +57,13 @@ export default async function MarketsChart({
     } else if (quoteData.currency === "GBP") {
       currencySymbol = "£";
     }
+
+    console.log('chartData:', chartData);
     
     // 准备图表数据
     const chartQuotes = chartData.quotes.map((quote: any) => ({
       date: quote.date,
-      price: Number(quote.close),
+      close: Number(quote.close),
     }));
     
     // 检查是否有图表数据

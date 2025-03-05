@@ -245,7 +245,7 @@ async def stock_quote(ticker: str) -> Dict:
                         data_sources = [
                             {"name": "stock_zh_a_spot_em", "handler": lambda: ak.stock_zh_a_spot_em()},
                             {"name": "stock_zh_a_spot_tx", "handler": lambda: ak.stock_zh_a_spot_tx(symbol=clean_ticker)},
-                            {"name": "stock_zh_a_minutely_sina", "handler": lambda: ak.stock_zh_a_minute_tx(symbol=clean_ticker, period='1')}
+                            {"name": "stock_zh_a_minutely_sina", "handler": lambda: ak.stock_zh_a_minute_sina(symbol=f"{'sh' if market == 'sh' else 'sz'}{clean_ticker}")}
                         ]
                         
                         for source in data_sources:
