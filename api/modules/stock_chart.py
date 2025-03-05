@@ -9,9 +9,9 @@ router = APIRouter(tags=["stock_chart"])
 
 # 定义中国主要指数代码映射
 CHINA_INDEX_MAP = {
-    "000016": "上证50", 
-    "000300": "沪深300",
-    "000852": "中证1000"
+    "sh000016": "上证50", 
+    "sh000300": "沪深300",
+    "sh000852": "中证1000"
 }
 
 def generate_mock_chart_data(start_date, end_date, interval, is_index=False):
@@ -210,13 +210,15 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
         response = {"ticker": ticker, "quotes": [], "currency": "CNY", "error": None}
         
         if is_china_index:
+            # 去掉xx000016前面的字母
+            clean_ticker2 = clean_ticker.replace('sh', '').replace('sz', '')
             # 设置多个数据源尝试列表
             data_sources = [
-                {"name": "index_zh_a_hist", "handler": lambda: ak.index_zh_a_hist(symbol=clean_ticker, period="daily", 
+                {"name": "index_zh_a_hist", "handler": lambda: ak.index_zh_a_hist(symbol=clean_ticker2, period="daily", 
                                        start_date=start_date_str, end_date=end_date_str)},
                 {"name": "stock_zh_index_daily", "handler": lambda: ak.stock_zh_index_daily(symbol=clean_ticker)},
                 {"name": "stock_zh_index_daily_tx", "handler": lambda: ak.stock_zh_index_daily_tx(symbol=clean_ticker)},
-                {"name": "stock_zh_index_daily_em", "handler": lambda: ak.stock_zh_index_daily_em(symbol=clean_ticker)}
+                {"name": "stock_zh_index_daily_em", "handler": lambda: ak.stock_zh_index_daily_em(symbol=clean_ticker, start_date=start_date_str, end_date=end_date_str)}
             ]
             
             success = False

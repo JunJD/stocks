@@ -2,11 +2,11 @@ import { fetchQuoteSummary } from "@/lib/yahoo-finance/fetchQuoteSummary"
 
 function formatNumber(num: number) {
   if (num >= 1e12) {
-    return `${(num / 1e12).toFixed(2)}T`
+    return `${(num / 1e12).toFixed(3)}T`
   } else if (num >= 1e9) {
-    return `${(num / 1e9).toFixed(2)}B`
+    return `${(num / 1e9).toFixed(3)}B`
   } else if (num >= 1e6) {
-    return `${(num / 1e6).toFixed(2)}M`
+    return `${(num / 1e6).toFixed(3)}M`
   } else {
     return num.toString()
   }
@@ -27,7 +27,7 @@ const keysToDisplay = [
   {
     key: "dividendYield",
     title: "Div yield",
-    format: (data: number) => `${(data * 100).toFixed(2)}%`,
+    format: (data: number) => `${(data * 100).toFixed(3)}%`,
   },
   { key: "beta", title: "Beta" },
   { key: "trailingEps", title: "EPS", section: "defaultKeyStatistics" },

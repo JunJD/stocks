@@ -62,12 +62,12 @@ export default async function StockChart({
   const ChartQuotes = chart.quotes
     .map((quote: any) => ({
       date: quote.date,
-      close: quote.close?.toFixed(2),
+      close: quote.close?.toFixed(3),
     }))
     .filter((quote: any) => quote.close !== undefined && quote.date !== null)
 
   // 判断是否为A股指数
-  const isChinaIndex = ticker === "000016" || ticker === "000300" || ticker === "000852";
+  const isChinaIndex = ticker === "sh000016" || ticker === "sh000300" || ticker === "sh000852";
 
   return (
     <div className="h-[27.5rem] w-full">
@@ -88,20 +88,20 @@ export default async function StockChart({
             <span className="text-nowrap">
               <span className="text-xl font-bold">
                 {quote.currency === "USD" ? "$" : "¥"}
-                {quote.regularMarketPrice?.toFixed(2)}
+                {quote.regularMarketPrice?.toFixed(3)}
               </span>
               <span className="font-semibold">
                 {quote.regularMarketChange !== undefined &&
                 quote.regularMarketChangePercent !== undefined ? (
                   quote.regularMarketChange > 0 ? (
                     <span className="text-green-800 dark:text-green-400">
-                      +{quote.regularMarketChange.toFixed(2)} (+
-                      {quote.regularMarketChangePercent.toFixed(2)}%)
+                      +{quote.regularMarketChange.toFixed(3)} (+
+                      {quote.regularMarketChangePercent.toFixed(3)}%)
                     </span>
                   ) : (
                     <span className="text-red-800 dark:text-red-500">
-                      {quote.regularMarketChange.toFixed(2)} (
-                      {quote.regularMarketChangePercent.toFixed(2)}%)
+                      {quote.regularMarketChange.toFixed(3)} (
+                      {quote.regularMarketChangePercent.toFixed(3)}%)
                     </span>
                   )
                 ) : null}
@@ -115,20 +115,20 @@ export default async function StockChart({
                     <span>·</span>
                     <span>
                       盘后: {quote.currency === "USD" ? "$" : "¥"}
-                      {quote.postMarketPrice.toFixed(2)}
+                      {quote.postMarketPrice.toFixed(3)}
                     </span>
                     <span>
                       {quote.postMarketChange !== undefined &&
                       quote.postMarketChangePercent !== undefined ? (
                         quote.postMarketChange > 0 ? (
                           <span className="text-green-800 dark:text-green-400">
-                            +{quote.postMarketChange.toFixed(2)} (+
-                            {quote.postMarketChangePercent.toFixed(2)}%)
+                            +{quote.postMarketChange.toFixed(3)} (+
+                            {quote.postMarketChangePercent.toFixed(3)}%)
                           </span>
                         ) : (
                           <span className="text-red-800 dark:text-red-500">
-                            {quote.postMarketChange.toFixed(2)} (
-                            {quote.postMarketChangePercent.toFixed(2)}%)
+                            {quote.postMarketChange.toFixed(3)} (
+                            {quote.postMarketChangePercent.toFixed(3)}%)
                           </span>
                         )
                       ) : null}
@@ -140,20 +140,20 @@ export default async function StockChart({
                     <span>·</span>
                     <span>
                       盘前: {quote.currency === "USD" ? "$" : "¥"}
-                      {quote.preMarketPrice.toFixed(2)}
+                      {quote.preMarketPrice.toFixed(3)}
                     </span>
                     <span>
                       {quote.preMarketChange !== undefined &&
                       quote.preMarketChangePercent !== undefined ? (
                         quote.preMarketChange > 0 ? (
                           <span className="text-green-800 dark:text-green-400">
-                            +{quote.preMarketChange.toFixed(2)} (+
-                            {quote.preMarketChangePercent.toFixed(2)}%)
+                            +{quote.preMarketChange.toFixed(3)} (+
+                            {quote.preMarketChangePercent.toFixed(3)}%)
                           </span>
                         ) : (
                           <span className="text-red-800 dark:text-red-500">
-                            {quote.preMarketChange.toFixed(2)} (
-                            {quote.preMarketChangePercent.toFixed(2)}%)
+                            {quote.preMarketChange.toFixed(3)} (
+                            {quote.preMarketChangePercent.toFixed(3)}%)
                           </span>
                         )
                       ) : null}
@@ -173,8 +173,8 @@ export default async function StockChart({
                 )}
               >
                 {priceChange > 0
-                  ? `+${priceChange.toFixed(2)}%`
-                  : `${priceChange.toFixed(2)}%`}
+                  ? `+${priceChange.toFixed(3)}%`
+                  : `${priceChange.toFixed(3)}%`}
               </span>
             )}
             <span className="text-muted-foreground">

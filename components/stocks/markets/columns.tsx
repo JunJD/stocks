@@ -45,7 +45,7 @@ export const columns: ColumnDef<Quote>[] = [
       const price = row.getValue("regularMarketPrice") as number
       // 检查价格是否为有效数字
       const isValidPrice = price !== undefined && price !== null && !isNaN(price)
-      return <div className="text-right">{isValidPrice ? price.toFixed(2) : "暂无"}</div>
+      return <div className="text-right">{isValidPrice ? price.toFixed(3) : "暂无"}</div>
     },
   },
   {
@@ -64,7 +64,7 @@ export const columns: ColumnDef<Quote>[] = [
             !isValidChange ? "" : change < 0 ? "text-red-500" : change > 0 ? "text-green-500" : ""
           )}
         >
-          {isValidChange ? (change > 0 ? "+" : "") + change.toFixed(2) : "暂无"}
+          {isValidChange ? (change > 0 ? "+" : "") + change.toFixed(3) : "暂无"}
         </div>
       )
     },
@@ -99,7 +99,7 @@ export const columns: ColumnDef<Quote>[] = [
                 : "bg-green-300 text-green-800 dark:bg-green-950 dark:text-green-400"
             )}
           >
-            {changePercent.toFixed(2)}%
+            {changePercent.toFixed(3)}%
           </div>
         </div>
       )

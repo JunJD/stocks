@@ -9,9 +9,9 @@ router = APIRouter(tags=["stock_search"])
 
 # 定义中国主要指数代码映射
 CHINA_INDEX_MAP = {
-    "000016": "上证50", 
-    "000300": "沪深300",
-    "000852": "中证1000"
+    "sh000016": "上证50", 
+    "sh000300": "沪深300",
+    "sh000852": "中证1000"
 }
 
 class SearchNews:

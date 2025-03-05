@@ -21,7 +21,7 @@ interface Quote {
 
 // 格式化货币
 const formatCurrency = (value: number, symbol: string = "¥") => {
-  return `${symbol}${value.toFixed(2)}`;
+  return `${symbol}${value.toFixed(3)}`;
 };
 
 export default async function MarketsChart({
@@ -46,7 +46,7 @@ export default async function MarketsChart({
     console.log('Quote data received:', quoteData?.shortName || 'No name');
 
     // 检查是否为中国指数
-    const isChinaIndex = ["000016", "000300", "000852"].includes(ticker);
+    const isChinaIndex = ["sh000016", "sh000300", "sh000852"].includes(ticker);
     
     // 获取货币符号 - 根据货币类型设置
     let currencySymbol = "¥"; // 默认人民币符号
@@ -78,7 +78,7 @@ export default async function MarketsChart({
     
     // 获取涨跌幅
     const changePercent = quoteData.regularMarketChangePercent || 0;
-    const changePercentString = (changePercent * 100).toFixed(2) + "%";
+    const changePercentString = (changePercent * 100).toFixed(3) + "%";
     const changeColor = changePercent > 0 ? "text-green-500" : changePercent < 0 ? "text-red-500" : "text-gray-500";
     
     return (

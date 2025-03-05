@@ -55,9 +55,9 @@ function isMarketOpen() {
 
 // 中国A股指数
 const chinaTickers = [
-  { symbol: "000016", shortName: "上证50" },
-  { symbol: "000300", shortName: "沪深300" },
-  { symbol: "000852", shortName: "中证1000" },
+  { symbol: "sh000016", shortName: "上证50" },
+  { symbol: "sh000300", shortName: "沪深300" },
+  { symbol: "sh000852", shortName: "中证1000" },
   { symbol: "CL=F", shortName: "原油" },
   { symbol: "GC=F", shortName: "黄金" },
   { symbol: "SI=F", shortName: "白银" },
@@ -101,7 +101,7 @@ export default async function Home({
     (searchParams?.interval as Interval) || DEFAULT_INTERVAL
   )
   // 使用沪深300指数替代道琼斯指数获取新闻
-  const news = await fetchStockSearch("000300", 1)
+  const news = await fetchStockSearch("sh000300", 1)
 
   // 使用我们的API获取股票数据
   const fetchStockData = async (symbol: string) => {

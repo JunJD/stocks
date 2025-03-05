@@ -70,7 +70,7 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
         return <div className="text-right">N/A</div>
       }
 
-      return <div className="text-right">{pe.toFixed(2)}</div>
+      return <div className="text-right">{pe.toFixed(3)}</div>
     },
   },
   {
@@ -83,7 +83,7 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
       if (price === undefined || price === null) {
         return <div className="text-right">N/A</div>
       }
-      return <div className="text-right">{price.toFixed(2)}</div>
+      return <div className="text-right">{price.toFixed(3)}</div>
     },
   },
   {
@@ -107,7 +107,7 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
             )}
           >
             {marketChange > 0 ? "+" : ""}
-            {marketChange.toFixed(2)}
+            {marketChange.toFixed(3)}
           </div>
         </div>
       )
@@ -134,7 +134,7 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
             )}
           >
             {marketChangePercent > 0 ? "+" : ""}
-            {marketChangePercent.toFixed(2)}
+            {marketChangePercent.toFixed(3)}
           </div>
         </div>
       )

@@ -46,10 +46,10 @@ export async function fetchChartData(
         currency: data.currency || "CNY",
         symbol: data.ticker || ticker,
         regularMarketPrice: data.quotes && data.quotes.length ? data.quotes[data.quotes.length - 1].close : 0,
-        exchangeName: ticker === "000016" || ticker === "000300" || ticker === "000852" 
+        exchangeName: ticker === "sh000016" || ticker === "sh000300" || ticker === "sh000852" 
           ? (ticker.startsWith('0') ? "SSE" : "SZSE")
           : (data.ticker && data.ticker.startsWith('6') ? "SSE" : "SZSE"),
-        instrumentType: ticker === "000016" || ticker === "000300" || ticker === "000852" ? "INDEX" : "EQUITY",
+        instrumentType: ticker === "sh000016" || ticker === "sh000300" || ticker === "sh000852" ? "INDEX" : "EQUITY",
         chartPreviousClose: data.quotes && data.quotes.length ? data.quotes[0].close : 0,
         previousClose: data.quotes && data.quotes.length ? data.quotes[0].close : 0,
       },

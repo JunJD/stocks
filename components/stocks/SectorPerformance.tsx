@@ -33,7 +33,7 @@ export default async function SectorPerformance() {
   }, 0)
 
   const averageChangePercentage =
-    (totalChangePercentage / data.length).toFixed(2) + "%"
+    (totalChangePercentage / data.length).toFixed(3) + "%"
 
   const allSectors = {
     sector: "All sectors",
@@ -57,7 +57,7 @@ export default async function SectorPerformance() {
                 : "bg-gradient-to-l from-red-300 text-red-800 dark:from-red-950 dark:text-red-500"
             )}
           >
-            {parseFloat(sector.changesPercentage).toFixed(2) + "%"}
+            {parseFloat(sector.changesPercentage).toFixed(3) + "%"}
           </span>
         </div>
       ))}
