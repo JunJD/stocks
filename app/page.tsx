@@ -166,7 +166,7 @@ export default async function Home({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="w-full lg:w-1/2">
+        {/* <div className="w-full lg:w-1/2">
           <Card className="relative flex h-full min-h-[15rem] flex-col justify-between overflow-hidden">
             <CardHeader>
               <CardTitle className="z-50 w-fit rounded-full px-4  py-2 font-medium dark:bg-neutral-100/5">
@@ -195,8 +195,8 @@ export default async function Home({
               className={`pointer-events-none absolute inset-0 z-0 h-[65%] w-[65%] -translate-x-[10%] -translate-y-[30%] rounded-full blur-3xl ${sentimentBackground}`}
             />
           </Card>
-        </div>
-        <div className="w-full lg:w-1/2">
+        </div> */}
+        {/* <div className="w-full lg:w-1/2">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">板块表现</CardTitle>
@@ -207,7 +207,7 @@ export default async function Home({
               </Suspense>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
       <div>
         <h2 className="py-4 text-xl font-medium">市场行情</h2>

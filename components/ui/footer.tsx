@@ -1,34 +1,37 @@
 "use client"
 
 import Link from "next/link"
+import { HomeIcon, StarIcon, BellIcon, SearchIcon } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="container py-6 md:px-8 md:py-0">
-      <div className="flex flex-col items-end justify-between md:h-24 md:flex-row">
-        <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
-          Built by{" "}
+    <footer className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
+      <div className="container py-2">
+        <div className="flex justify-around items-center">
           <Link
-            prefetch={false}
-            href="https://twitter.com/DariusLukasukas"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium underline underline-offset-4"
+            href="/watchlist"
+            className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            Darius Lukasukas
+            <StarIcon className="h-5 w-5" />
+            <span className="text-xs mt-1">自选</span>
           </Link>
-          . The source code is available on{" "}
+          
           <Link
-            prefetch={false}
-            href="https://github.com/DariusLukasukas/stocks"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium underline underline-offset-4"
+            href="/news"
+            className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            GitHub
+            <BellIcon className="h-5 w-5" />
+            <span className="text-xs mt-1">快讯</span>
           </Link>
-          .
-        </p>
+          
+          <Link
+            href="/search"
+            className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <SearchIcon className="h-5 w-5" />
+            <span className="text-xs mt-1">搜索</span>
+          </Link>
+        </div>
       </div>
     </footer>
   )
