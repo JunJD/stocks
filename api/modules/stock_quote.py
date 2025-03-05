@@ -3,6 +3,10 @@ from fastapi import APIRouter
 import akshare as ak
 from datetime import datetime
 import random
+from .utils.logger import get_logger, log_akshare_call
+
+# 创建logger实例
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["stock_quote"])
 
@@ -21,12 +25,15 @@ async def stock_quote(ticker: str) -> Dict:
     :param ticker: 股票代码
     :return: 股票报价信息
     """
+    logger.info(f"接收到股票报价请求: {ticker}")
     try:
         # 移除前缀符号处理
         clean_ticker = ticker.replace('^', '')
+        logger.debug(f"处理后的股票代码: {clean_ticker}")
         
         # 检查是股票还是指数
         is_index = ticker.startswith('^') or clean_ticker in CHINA_INDEX_MAP
+        logger.debug(f"是否为指数: {is_index}")
         
         # Yahoo Finance 返回格式的基本结构
         yahoo_response = {
@@ -69,7 +76,11 @@ async def stock_quote(ticker: str) -> Dict:
                 # 处理中国A股指数
                 if clean_ticker in CHINA_INDEX_MAP:
                     # 使用 stock_zh_index_spot_sina 方法获取指数数据
-                    df = ak.stock_zh_index_spot_sina()
+                    @log_akshare_call
+                    def get_index_data():
+                        return ak.stock_zh_index_spot_sina()
+                    
+                    df = get_index_data()
                     df = df[df['代码'] == clean_ticker]
                     
                     if not df.empty:
@@ -102,7 +113,11 @@ async def stock_quote(ticker: str) -> Dict:
                 # 处理非中国A股指数
                 else:
                     # 使用 stock_zh_index_spot_sina 方法获取其他指数数据
-                    df = ak.stock_zh_index_spot_sina()
+                    @log_akshare_call
+                    def get_other_index_data():
+                        return ak.stock_zh_index_spot_sina()
+                    
+                    df = get_other_index_data()
                     df = df[df['代码'] == clean_ticker]
                     
                     if not df.empty:
@@ -172,7 +187,7 @@ async def stock_quote(ticker: str) -> Dict:
                             "fullExchangeName": "New York Stock Exchange"
                         })
             except Exception as e:
-                print(f"获取指数数据失败: {str(e)}")
+                logger.error(f"获取指数数据失败: {str(e)}", exc_info=True)
                 # 生成模拟数据
                 yahoo_response.update({
                     "shortName": CHINA_INDEX_MAP.get(clean_ticker, f"指数 {clean_ticker}"),
@@ -181,17 +196,27 @@ async def stock_quote(ticker: str) -> Dict:
                     "regularMarketChangePercent": (random.random() * 2 - 1) * 0.03,
                     "currency": "CNY" if clean_ticker in CHINA_INDEX_MAP else "USD"
                 })
+                logger.info("已生成模拟指数数据")
+                logger.debug(f"模拟数据: {yahoo_response}")
         else:
             # 获取股票实时数据
             try:
                 if clean_ticker.startswith(('0', '3', '6')):  # A股
-                    # 获取A股实时行情
+                    logger.info(f"获取A股实时数据: {clean_ticker}")
                     market = 'sh' if clean_ticker.startswith('6') else 'sz'
-                    stock_zh_a_spot_df = ak.stock_zh_a_spot_em()
+                    @log_akshare_call
+                    def get_stock_data():
+                        return ak.stock_zh_a_spot_em()
+                    
+                    stock_zh_a_spot_df = get_stock_data()
+                    logger.debug(f"获取到的数据形状: {stock_zh_a_spot_df.shape}")
+                    
                     filtered = stock_zh_a_spot_df[stock_zh_a_spot_df['代码'] == clean_ticker]
+                    logger.debug(f"过滤后的数据行数: {len(filtered)}")
                     
                     if not filtered.empty:
                         row = filtered.iloc[0]
+                        logger.debug(f"原始数据: {row.to_dict()}")
                         
                         # 填充Yahoo返回格式数据
                         yahoo_response.update({
@@ -213,7 +238,9 @@ async def stock_quote(ticker: str) -> Dict:
                             "exchange": "SHG" if market == 'sh' else "SHE",
                             "fullExchangeName": "上海证券交易所" if market == 'sh' else "深圳证券交易所"
                         })
+                        logger.debug(f"转换后的数据: {yahoo_response}")
                     else:
+                        logger.warning(f"未找到股票 {clean_ticker} 的数据，尝试其他数据源")
                         # 如果无法获取实时数据，尝试使用不同的数据源
                         data_sources = [
                             {"name": "stock_zh_a_spot_em", "handler": lambda: ak.stock_zh_a_spot_em()},
@@ -223,16 +250,21 @@ async def stock_quote(ticker: str) -> Dict:
                         
                         for source in data_sources:
                             try:
-                                print(f"尝试使用备选数据源 {source['name']} 获取 {clean_ticker} 股票数据")
-                                stock_df = source["handler"]()
+                                logger.info(f"尝试使用备选数据源 {source['name']} 获取 {clean_ticker} 股票数据")
+                                @log_akshare_call
+                                def get_alternative_data():
+                                    return source["handler"]()
+                                
+                                stock_df = get_alternative_data()
                                 
                                 if stock_df is not None and not stock_df.empty:
+                                    logger.debug(f"从 {source['name']} 获取到数据，形状: {stock_df.shape}")
                                     # 针对不同数据源筛选数据
                                     if source["name"] == "stock_zh_a_spot_em":
                                         stock_df = stock_df[stock_df['代码'] == clean_ticker]
                                     
                                     if not stock_df.empty:
-                                        print(f"从 {source['name']} 成功获取 {clean_ticker} 数据")
+                                        logger.debug(f"从 {source['name']} 成功获取 {clean_ticker} 数据")
                                         row = stock_df.iloc[0]
                                         
                                         # 映射字段 - 根据不同数据源调整
@@ -301,11 +333,12 @@ async def stock_quote(ticker: str) -> Dict:
                                         # 如果成功获取数据，跳出循环
                                         break
                             except Exception as e:
-                                print(f"从 {source['name']} 获取数据失败: {str(e)}")
+                                logger.error(f"从 {source['name']} 获取数据失败: {str(e)}", exc_info=True)
+                                continue
                         
-                        # 检查是否获取到有效价格，如果没有则使用模拟数据
+                        # 检查是否获取到有效价格
                         if yahoo_response["regularMarketPrice"] == 0:
-                            print(f"无法从任何数据源获取 {clean_ticker} 的有效数据，使用模拟数据")
+                            logger.warning(f"无法从任何数据源获取 {clean_ticker} 的有效数据，使用模拟数据")
                             yahoo_response.update({
                                 "shortName": f"股票 {clean_ticker}",
                                 "regularMarketPrice": 100 + random.random() * 500,
@@ -313,8 +346,10 @@ async def stock_quote(ticker: str) -> Dict:
                                 "regularMarketChangePercent": (random.random() * 2 - 1) * 0.05,
                                 "currency": "CNY" if clean_ticker.startswith(('0', '3', '6')) else "USD"
                             })
+                            logger.debug(f"生成的模拟数据: {yahoo_response}")
                 else:
-                    # 处理非A股的情况 - 可以在这里添加对港股、美股等的支持
+                    logger.info(f"处理非A股: {clean_ticker}")
+                    # 处理非A股的情况
                     yahoo_response.update({
                         "shortName": f"股票 {clean_ticker}",
                         "regularMarketPrice": 100 + random.random() * 500,
@@ -329,8 +364,9 @@ async def stock_quote(ticker: str) -> Dict:
                         "exchange": "NYQ" if clean_ticker.isalpha() else "HKG",
                         "fullExchangeName": "New York Stock Exchange" if clean_ticker.isalpha() else "Hong Kong Stock Exchange"
                     })
+                    logger.debug(f"生成的非A股数据: {yahoo_response}")
             except Exception as e:
-                print(f"获取股票数据失败: {str(e)}")
+                logger.error(f"获取股票数据失败: {str(e)}", exc_info=True)
                 # 生成模拟数据
                 yahoo_response.update({
                     "shortName": f"股票 {clean_ticker}",
@@ -339,6 +375,7 @@ async def stock_quote(ticker: str) -> Dict:
                     "regularMarketChangePercent": (random.random() * 2 - 1) * 0.05,
                     "currency": "CNY" if clean_ticker.startswith(('0', '3', '6')) else "USD"
                 })
+                logger.debug(f"生成的模拟数据: {yahoo_response}")
         
         # 计算51周最高最低价变化（随机生成）
         yahoo_response["fiftyTwoWeekLow"] = yahoo_response["regularMarketPrice"] * 0.7
@@ -373,11 +410,12 @@ async def stock_quote(ticker: str) -> Dict:
         yahoo_response["forwardPE"] = yahoo_response["trailingPE"] * (0.8 + random.random() * 0.4)
         yahoo_response["dividendYield"] = random.random() * 0.05
         
+        logger.info(f"完成数据处理: {ticker}")
         return yahoo_response
     except Exception as e:
-        print(f"Quote error: {str(e)}")
+        logger.error(f"Quote error: {str(e)}", exc_info=True)
         # 返回带有错误信息但不影响前端显示的数据
-        return {
+        error_response = {
             "symbol": ticker,
             "shortName": f"加载中...",  # 不显示出错信息
             "longName": f"暂无数据", 
@@ -387,4 +425,6 @@ async def stock_quote(ticker: str) -> Dict:
             "currency": "CNY",
             "quoteType": "INDEX" if ticker.startswith('^') or ticker.replace('^', '') in CHINA_INDEX_MAP else "EQUITY",
             "_error": str(e)  # 将错误信息放在内部字段中，不直接显示给用户
-        } 
+        }
+        logger.debug(f"返回错误响应: {error_response}")
+        return error_response 

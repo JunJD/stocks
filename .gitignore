@@ -3,6 +3,7 @@
 # dependencies
 /package
 /venv
+/logs
 /node_modules
 /.pnp
 .pnp.js

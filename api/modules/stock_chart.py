@@ -4,6 +4,10 @@ import akshare as ak
 from datetime import datetime, timedelta
 import pandas as pd
 import random
+from .utils.logger import get_logger, log_akshare_call
+
+# 创建logger实例
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["stock_chart"])
 
@@ -16,6 +20,7 @@ CHINA_INDEX_MAP = {
 
 def generate_mock_chart_data(start_date, end_date, interval, is_index=False):
     """生成模拟图表数据"""
+    logger.info(f"生成模拟数据: start_date={start_date}, end_date={end_date}, interval={interval}, is_index={is_index}")
     quotes = []
     current_date = start_date
     
@@ -147,9 +152,11 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
     :param interval: 时间间隔 (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
     :return: 图表数据
     """
+    logger.info(f"接收到图表数据请求: ticker={ticker}, range={range}, interval={interval}")
     try:
         # 移除可能的前缀符号
         clean_ticker = ticker.replace('^', '')
+        logger.debug(f"处理后的股票代码: {clean_ticker}")
         
         # 确定时间段
         end_date = datetime.now()
@@ -199,12 +206,15 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
             period = "monthly"
             adjust = ""
             
+        logger.debug(f"时间范围: start_date={start_date}, end_date={end_date}, period={period}")
+        
         # 格式化日期为字符串
         start_date_str = start_date.strftime("%Y%m%d")
         end_date_str = end_date.strftime("%Y%m%d")
         
         # 检查是否为中国主要指数
         is_china_index = clean_ticker in CHINA_INDEX_MAP
+        logger.debug(f"是否为中国主要指数: {is_china_index}")
         
         quotes = []
         response = {"ticker": ticker, "quotes": [], "currency": "CNY", "error": None}
@@ -212,6 +222,8 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
         if is_china_index:
             # 去掉xx000016前面的字母
             clean_ticker2 = clean_ticker.replace('sh', '').replace('sz', '')
+            logger.debug(f"处理后的指数代码: {clean_ticker2}")
+            
             # 设置多个数据源尝试列表
             data_sources = [
                 {"name": "index_zh_a_hist", "handler": lambda: ak.index_zh_a_hist(symbol=clean_ticker2, period="daily", 
@@ -227,13 +239,19 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
             # 循环尝试不同的数据源
             for source in data_sources:
                 try:
-                    print(f"尝试使用数据源 {source['name']} 获取指数 {clean_ticker} 数据")
-                    df = source["handler"]()
+                    logger.info(f"尝试使用数据源 {source['name']} 获取指数 {clean_ticker} 数据")
+                    
+                    @log_akshare_call
+                    def fetch_data():
+                        return source["handler"]()
+                    
+                    df = fetch_data()
                     
                     # 如果有数据返回
                     if df is not None and not df.empty:
-                        print(f"成功从 {source['name']} 获取到指数数据, 数据条数: {len(df)}")
-                        print(f"数据列: {df.columns.tolist()}")
+                        logger.info(f"成功从 {source['name']} 获取到指数数据, 数据条数: {len(df)}")
+                        logger.debug(f"数据列: {df.columns.tolist()}")
+                        logger.debug(f"数据示例:\n{df.head().to_dict()}")
                         
                         # 根据不同数据源调整列名映射
                         column_mappings = {
@@ -302,34 +320,43 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
                             # 如果成功获取数据
                             if quotes:
                                 success = True
-                                print(f"从 {source['name']} 成功处理了 {len(quotes)} 条指数数据")
+                                logger.info(f"从 {source['name']} 成功处理了 {len(quotes)} 条指数数据")
                                 break
                         else:
                             print(f"数据源 {source['name']} 返回的数据缺少必要列: {required_columns}")
                     else:
-                        print(f"数据源 {source['name']} 返回了空数据")
+                        logger.warning(f"数据源 {source['name']} 返回了空数据")
                 
                 except Exception as e:
                     error_message = f"从 {source['name']} 获取数据失败: {str(e)}"
-                    print(error_message)
-                    print(f"错误类型: {type(e).__name__}")
+                    logger.error(error_message, exc_info=True)
                     error_messages.append(error_message)
             
             # 如果所有数据源都失败了
             if not success:
-                print(f"所有数据源都失败了，生成模拟数据")
-                print(f"错误详情: {'; '.join(error_messages)}")
+                logger.warning(f"所有数据源都失败了，生成模拟数据")
+                logger.debug(f"错误详情: {'; '.join(error_messages)}")
                 
                 # 生成模拟数据
                 if response["ticker"] in CHINA_INDEX_MAP:
                     mock_data = generate_mock_chart_data(start_date, end_date, interval, is_index=True)
                     quotes = mock_data
-                    print(f"已生成指数 {clean_ticker} 的模拟数据，共 {len(quotes)} 条")
+                    logger.info(f"已生成指数 {clean_ticker} 的模拟数据，共 {len(quotes)} 条")
         elif clean_ticker.startswith(('0', '3', '6')):  # A股
             # 获取股票历史数据
             try:
                 market = "sh" if clean_ticker.startswith('6') else "sz"
-                df = ak.stock_zh_a_hist(symbol=clean_ticker, period=period, start_date=start_date_str, end_date=end_date_str, adjust=adjust)
+                logger.info(f"获取A股历史数据: 股票={clean_ticker}, 市场={market}")
+                
+                @log_akshare_call
+                def fetch_stock_data():
+                    return ak.stock_zh_a_hist(symbol=clean_ticker, period=period, 
+                                            start_date=start_date_str, end_date=end_date_str, 
+                                            adjust=adjust)
+                
+                df = fetch_stock_data()
+                logger.debug(f"原始数据列: {df.columns.tolist()}")
+                logger.debug(f"数据示例:\n{df.head().to_dict()}")
                 
                 # 重命名列以匹配要求的格式
                 df = df.rename(columns={
@@ -340,6 +367,7 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
                     "最低": "low",
                     "成交量": "volume"
                 })
+                logger.debug(f"重命名后的列: {df.columns.tolist()}")
                 
                 # 只保留需要的列
                 if "date" in df.columns and "open" in df.columns:
@@ -359,16 +387,21 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
                             "volume": float(row["volume"])
                         })
             except Exception as e:
-                print(f"获取股票历史数据失败: {str(e)}")
+                logger.error(f"获取股票历史数据失败: {str(e)}", exc_info=True)
                 # 生成模拟数据
                 quotes = generate_mock_chart_data(start_date, end_date, interval)
         else:
+            logger.info(f"处理其他市场的股票和指数: {ticker}")
             # 对于其他市场的股票和指数，生成模拟数据
             quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=(ticker.startswith("^")))
         
         # 如果没有获取到数据，生成模拟数据
         if not quotes:
+            logger.warning("未获取到实际数据，生成模拟数据")
             quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=(ticker.startswith("^") or is_china_index))
+        
+        logger.info(f"返回数据: 股票={ticker}, 数据点数={len(quotes)}")
+        logger.debug(f"第一个数据点: {quotes[0] if quotes else None}")
                 
         # 返回与Yahoo Finance格式兼容的结果
         return {
@@ -378,6 +411,7 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
             "error": None
         }
     except Exception as e:
+        logger.error(f"处理图表数据请求时发生错误: {str(e)}", exc_info=True)
         return {
             "ticker": ticker,
             "quotes": [],

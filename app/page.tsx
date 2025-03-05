@@ -58,12 +58,12 @@ const chinaTickers = [
   { symbol: "sh000016", shortName: "上证50" },
   { symbol: "sh000300", shortName: "沪深300" },
   { symbol: "sh000852", shortName: "中证1000" },
-  { symbol: "CL=F", shortName: "原油" },
-  { symbol: "GC=F", shortName: "黄金" },
-  { symbol: "SI=F", shortName: "白银" },
-  { symbol: "EURUSD=X", shortName: "欧元/美元" },
-  { symbol: "^TNX", shortName: "10年期国债" },
-  { symbol: "BTC-USD", shortName: "比特币" },
+  // { symbol: "CL=F", shortName: "原油" },
+  // { symbol: "GC=F", shortName: "黄金" },
+  // { symbol: "SI=F", shortName: "白银" },
+  // { symbol: "EURUSD=X", shortName: "欧元/美元" },
+  // { symbol: "^TNX", shortName: "10年期国债" },
+  // { symbol: "BTC-USD", shortName: "比特币" },
 ]
 
 // 使用中国指数作为默认显示的股票列表
