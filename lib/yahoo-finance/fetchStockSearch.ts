@@ -57,7 +57,6 @@ export async function fetchStockSearch(ticker: string, newsCount: number = 5) {
     }
     
     const data = await response.json()
-    console.log('response==》', data)
     
     return data as SearchResult
     

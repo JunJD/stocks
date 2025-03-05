@@ -30,15 +30,15 @@ interface Quote {
 
 const rangeTextMapping = {
   "1d": "",
-  "1w": "Past Week",
-  "1m": "Past Month",
-  "3m": "Past 3 Months",
-  "1y": "Past Year",
+  "1w": "一周",
+  "1m": "一个月",
+  "3m": "三个月",
+  "1y": "一年",
 }
 
 function calculatePriceChange(qouteClose: number, currentPrice: number) {
   const firstItemPrice = qouteClose || 0
-  return ((currentPrice - firstItemPrice) / firstItemPrice) * 100
+  return firstItemPrice > 0 ? ((currentPrice - firstItemPrice) / firstItemPrice) * 100 : 0
 }
 
 export default async function StockChart({
@@ -51,11 +51,12 @@ export default async function StockChart({
 
   const [chart, quote] = await Promise.all([chartData, quoteData]) as [any, Quote]
 
+  // 计算价格变化
   const priceChange =
     chart.quotes.length &&
     calculatePriceChange(
       Number(chart.quotes[0].close),
-      Number(chart.meta.regularMarketPrice)
+      Number(quoteData.regularMarketPrice || chart.meta.regularMarketPrice)
     )
 
   const ChartQuotes = chart.quotes
@@ -64,6 +65,9 @@ export default async function StockChart({
       close: quote.close?.toFixed(2),
     }))
     .filter((quote: any) => quote.close !== undefined && quote.date !== null)
+
+  // 判断是否为A股指数
+  const isChinaIndex = ticker === "000016" || ticker === "000300" || ticker === "000852";
 
   return (
     <div className="h-[27.5rem] w-full">
@@ -83,7 +87,7 @@ export default async function StockChart({
           <div className="space-x-1">
             <span className="text-nowrap">
               <span className="text-xl font-bold">
-                {quote.currency === "USD" ? "$" : ""}
+                {quote.currency === "USD" ? "$" : "¥"}
                 {quote.regularMarketPrice?.toFixed(2)}
               </span>
               <span className="font-semibold">
@@ -103,58 +107,61 @@ export default async function StockChart({
                 ) : null}
               </span>
             </span>
-            <span className="inline space-x-1 font-semibold text-muted-foreground">
-              {quote.hasPrePostMarketData && quote.postMarketPrice && (
-                <>
-                  <span>·</span>
-                  <span>
-                    Post-Market: {quote.currency === "USD" ? "$" : ""}
-                    {quote.postMarketPrice.toFixed(2)}
-                  </span>
-                  <span>
-                    {quote.postMarketChange !== undefined &&
-                    quote.postMarketChangePercent !== undefined ? (
-                      quote.postMarketChange > 0 ? (
-                        <span className="text-green-800 dark:text-green-400">
-                          +{quote.postMarketChange.toFixed(2)} (+
-                          {quote.postMarketChangePercent.toFixed(2)}%)
-                        </span>
-                      ) : (
-                        <span className="text-red-800 dark:text-red-500">
-                          {quote.postMarketChange.toFixed(2)} (
-                          {quote.postMarketChangePercent.toFixed(2)}%)
-                        </span>
-                      )
-                    ) : null}
-                  </span>
-                </>
-              )}
-              {quote.hasPrePostMarketData && quote.preMarketPrice && (
-                <>
-                  <span>·</span>
-                  <span>
-                    Pre-Market: {quote.currency === "USD" ? "$" : ""}
-                    {quote.preMarketPrice.toFixed(2)}
-                  </span>
-                  <span>
-                    {quote.preMarketChange !== undefined &&
-                    quote.preMarketChangePercent !== undefined ? (
-                      quote.preMarketChange > 0 ? (
-                        <span className="text-green-800 dark:text-green-400">
-                          +{quote.preMarketChange.toFixed(2)} (+
-                          {quote.preMarketChangePercent.toFixed(2)}%)
-                        </span>
-                      ) : (
-                        <span className="text-red-800 dark:text-red-500">
-                          {quote.preMarketChange.toFixed(2)} (
-                          {quote.preMarketChangePercent.toFixed(2)}%)
-                        </span>
-                      )
-                    ) : null}
-                  </span>
-                </>
-              )}
-            </span>
+            {/* 中国A股没有盘前盘后数据，所以只在非中国A股指数时显示 */}
+            {!isChinaIndex && quote.hasPrePostMarketData && (
+              <span className="inline space-x-1 font-semibold text-muted-foreground">
+                {quote.hasPrePostMarketData && quote.postMarketPrice && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      盘后: {quote.currency === "USD" ? "$" : "¥"}
+                      {quote.postMarketPrice.toFixed(2)}
+                    </span>
+                    <span>
+                      {quote.postMarketChange !== undefined &&
+                      quote.postMarketChangePercent !== undefined ? (
+                        quote.postMarketChange > 0 ? (
+                          <span className="text-green-800 dark:text-green-400">
+                            +{quote.postMarketChange.toFixed(2)} (+
+                            {quote.postMarketChangePercent.toFixed(2)}%)
+                          </span>
+                        ) : (
+                          <span className="text-red-800 dark:text-red-500">
+                            {quote.postMarketChange.toFixed(2)} (
+                            {quote.postMarketChangePercent.toFixed(2)}%)
+                          </span>
+                        )
+                      ) : null}
+                    </span>
+                  </>
+                )}
+                {quote.hasPrePostMarketData && quote.preMarketPrice && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      盘前: {quote.currency === "USD" ? "$" : "¥"}
+                      {quote.preMarketPrice.toFixed(2)}
+                    </span>
+                    <span>
+                      {quote.preMarketChange !== undefined &&
+                      quote.preMarketChangePercent !== undefined ? (
+                        quote.preMarketChange > 0 ? (
+                          <span className="text-green-800 dark:text-green-400">
+                            +{quote.preMarketChange.toFixed(2)} (+
+                            {quote.preMarketChangePercent.toFixed(2)}%)
+                          </span>
+                        ) : (
+                          <span className="text-red-800 dark:text-red-500">
+                            {quote.preMarketChange.toFixed(2)} (
+                            {quote.preMarketChangePercent.toFixed(2)}%)
+                          </span>
+                        )
+                      ) : null}
+                    </span>
+                  </>
+                )}
+              </span>
+            )}
           </div>
           <span className="space-x-1 whitespace-nowrap font-semibold">
             {priceChange !== 0 && rangeTextMapping[range] !== "" && (
@@ -178,7 +185,7 @@ export default async function StockChart({
       </div>
       {chart.quotes.length === 0 && (
         <div className="flex h-full items-center justify-center text-center text-neutral-500">
-          No data available
+          没有可用数据
         </div>
       )}
       {chart.quotes.length > 0 && (

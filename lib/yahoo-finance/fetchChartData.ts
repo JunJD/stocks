@@ -40,14 +40,21 @@ export async function fetchChartData(
     
     const data = await response.json()
     
-    // 转换为与原Yahoo Finance格式兼容的结构
+    // 转换为与前端组件兼容的格式
     return {
       meta: {
         currency: data.currency || "CNY",
-        symbol: data.ticker,
+        symbol: data.ticker || ticker,
+        regularMarketPrice: data.quotes && data.quotes.length ? data.quotes[data.quotes.length - 1].close : 0,
+        exchangeName: ticker === "000016" || ticker === "000300" || ticker === "000852" 
+          ? (ticker.startsWith('0') ? "SSE" : "SZSE")
+          : (data.ticker && data.ticker.startsWith('6') ? "SSE" : "SZSE"),
+        instrumentType: ticker === "000016" || ticker === "000300" || ticker === "000852" ? "INDEX" : "EQUITY",
+        chartPreviousClose: data.quotes && data.quotes.length ? data.quotes[0].close : 0,
+        previousClose: data.quotes && data.quotes.length ? data.quotes[0].close : 0,
       },
       quotes: data.quotes || [],
-      error: data.error,
+      error: data.error
     }
   } catch (error) {
     console.log("Failed to fetch chart data", error)

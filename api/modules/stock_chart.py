@@ -7,6 +7,13 @@ import random
 
 router = APIRouter(tags=["stock_chart"])
 
+# 定义中国主要指数代码映射
+CHINA_INDEX_MAP = {
+    "000016": "上证50", 
+    "000300": "沪深300",
+    "000852": "中证1000"
+}
+
 def generate_mock_chart_data(start_date, end_date, interval, is_index=False):
     """生成模拟图表数据"""
     quotes = []
@@ -153,60 +160,20 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
         start_date_str = start_date.strftime("%Y%m%d")
         end_date_str = end_date.strftime("%Y%m%d")
         
-        # 检查是股票还是指数
-        is_index = ticker.startswith('^')
+        # 检查是否为中国主要指数
+        is_china_index = clean_ticker in CHINA_INDEX_MAP
         
         quotes = []
         
-        if is_index:
-            # 获取指数历史数据
+        if is_china_index:
             try:
-                # 获取指数历史数据
-                if clean_ticker.startswith(('0', '3', '8', '9')) or clean_ticker in ['000001']:  # 上证或深证指数
-                    # 使用 stock_zh_index_daily 代替错误的方法
-                    df = ak.stock_zh_index_daily(symbol=clean_ticker)
-                    
-                    # 过滤日期
-                    df['date'] = pd.to_datetime(df.index)
-                    df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
-                    
-                    # 确保列名一致
-                    df = df.rename(columns={
-                        "open": "open",
-                        "close": "close",
-                        "high": "high",
-                        "low": "low",
-                        "volume": "volume"
-                    })
-                    
-                    # 只保留需要的列
-                    if "date" in df.columns and "open" in df.columns:
-                        df = df[["date", "open", "close", "high", "low", "volume"]]
-                        
-                        # 转换为列表
-                        for _, row in df.iterrows():
-                            quotes.append({
-                                "date": row["date"].strftime("%Y-%m-%d"),
-                                "open": float(row["open"]),
-                                "close": float(row["close"]),
-                                "high": float(row["high"]),
-                                "low": float(row["low"]),
-                                "volume": float(row["volume"])
-                            })
-                else:
-                    # 对于美股等其他指数，生成模拟数据
-                    quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=True)
-            except Exception as e:
-                print(f"获取指数历史数据失败: {str(e)}")
-                # 生成模拟数据
-                quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=True)
-        else:
-            # 获取股票历史数据
-            try:
-                if clean_ticker.startswith(('0', '3', '6')):  # A股
-                    market = "sh" if clean_ticker.startswith('6') else "sz"
-                    df = ak.stock_zh_a_hist(symbol=clean_ticker, period=period, start_date=start_date_str, end_date=end_date_str, adjust=adjust)
-                    
+                # 使用AKShare获取中国指数数据
+                # 参考 https://akshare.akfamily.xyz/data/index/index.html#id7
+                df = ak.index_zh_a_hist(symbol=clean_ticker, period="daily", 
+                                       start_date=start_date_str, end_date=end_date_str)
+                
+                # 如果有数据返回
+                if not df.empty:
                     # 重命名列以匹配要求的格式
                     df = df.rename(columns={
                         "日期": "date",
@@ -234,50 +201,66 @@ async def stock_chart(ticker: str, range: str = "1d", interval: str = "1m") -> D
                                 "low": float(row["low"]),
                                 "volume": float(row["volume"])
                             })
-                else:
-                    # 对于其他市场股票，生成模拟数据
-                    quotes = generate_mock_chart_data(start_date, end_date, interval)
+            except Exception as e:
+                print(f"获取中国指数数据失败: {str(e)}")
+                # 生成模拟数据
+                quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=True)
+        elif clean_ticker.startswith(('0', '3', '6')):  # A股
+            # 获取股票历史数据
+            try:
+                market = "sh" if clean_ticker.startswith('6') else "sz"
+                df = ak.stock_zh_a_hist(symbol=clean_ticker, period=period, start_date=start_date_str, end_date=end_date_str, adjust=adjust)
+                
+                # 重命名列以匹配要求的格式
+                df = df.rename(columns={
+                    "日期": "date",
+                    "开盘": "open",
+                    "收盘": "close",
+                    "最高": "high",
+                    "最低": "low",
+                    "成交量": "volume"
+                })
+                
+                # 只保留需要的列
+                if "date" in df.columns and "open" in df.columns:
+                    df = df[["date", "open", "close", "high", "low", "volume"]]
+                    
+                    # 转换日期格式
+                    df["date"] = pd.to_datetime(df["date"])
+                    
+                    # 转换为列表
+                    for _, row in df.iterrows():
+                        quotes.append({
+                            "date": row["date"].strftime("%Y-%m-%d"),
+                            "open": float(row["open"]),
+                            "close": float(row["close"]),
+                            "high": float(row["high"]),
+                            "low": float(row["low"]),
+                            "volume": float(row["volume"])
+                        })
             except Exception as e:
                 print(f"获取股票历史数据失败: {str(e)}")
                 # 生成模拟数据
                 quotes = generate_mock_chart_data(start_date, end_date, interval)
+        else:
+            # 对于其他市场的股票和指数，生成模拟数据
+            quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=(ticker.startswith("^")))
         
         # 如果没有获取到数据，生成模拟数据
         if not quotes:
-            quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=(ticker.startswith("^")))
+            quotes = generate_mock_chart_data(start_date, end_date, interval, is_index=(ticker.startswith("^") or is_china_index))
                 
         # 返回与Yahoo Finance格式兼容的结果
         return {
-            "meta": {
-                "currency": "CNY" if clean_ticker.startswith(('0', '3', '6')) else "USD",
-                "symbol": ticker,
-                "exchangeName": "SSE" if clean_ticker.startswith('6') else "SZSE" if clean_ticker.startswith(('0', '3')) else "NYQ",
-                "instrumentType": "INDEX" if ticker.startswith("^") else "EQUITY",
-                "regularMarketPrice": quotes[-1]["close"] if quotes else 0,
-                "chartPreviousClose": quotes[0]["close"] if quotes else 0,
-                "previousClose": quotes[0]["close"] if quotes else 0,
-            },
+            "ticker": ticker,
             "quotes": quotes,
-            "timestamp": [int(datetime.strptime(q["date"], "%Y-%m-%d").timestamp()) for q in quotes]
+            "currency": "CNY",
+            "error": None
         }
     except Exception as e:
-        print(f"Chart error: {str(e)}")
-        # 生成模拟数据
-        start_date = datetime.now() - timedelta(days=30)
-        end_date = datetime.now()
-        quotes = generate_mock_chart_data(start_date, end_date, interval="1d")
-        
         return {
-            "meta": {
-                "currency": "USD",
-                "symbol": ticker,
-                "exchangeName": "NYQ",
-                "instrumentType": "INDEX" if ticker.startswith("^") else "EQUITY",
-                "regularMarketPrice": quotes[-1]["close"] if quotes else 0,
-                "chartPreviousClose": quotes[0]["close"] if quotes else 0,
-                "previousClose": quotes[0]["close"] if quotes else 0,
-                "error": str(e)
-            },
-            "quotes": quotes,
-            "timestamp": [int(datetime.strptime(q["date"], "%Y-%m-%d").timestamp()) for q in quotes]
+            "ticker": ticker,
+            "quotes": [],
+            "currency": "CNY",
+            "error": str(e)
         } 

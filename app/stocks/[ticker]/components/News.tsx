@@ -69,7 +69,7 @@ export default async function News({ ticker }: { ticker: string }) {
               >
                 <span className="text-sm font-medium text-muted-foreground">
                   {article.publisher} -{" "}
-                  {timeAgo(article.providerPublishTime.toISOString())}
+                  {article.providerPublishTime ? timeAgo(article.providerPublishTime.toISOString()) : "未知时间"}
                 </span>
                 <span className="font-semibold">{article.title}</span>
                 <span className="text-sm font-medium text-muted-foreground">

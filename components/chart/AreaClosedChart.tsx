@@ -17,9 +17,10 @@ import { Range } from "@/lib/yahoo-finance/types"
 // UTILS
 const toDate = (d: any) => +new Date(d?.date || d)
 
-const formatCurrency = new Intl.NumberFormat("en-US", {
+// 使用人民币格式化
+const formatCurrency = new Intl.NumberFormat("zh-CN", {
   style: "currency",
-  currency: "USD",
+  currency: "CNY",
 }).format
 
 const MemoAreaClosed = memo(AreaClosed)
@@ -299,7 +300,14 @@ export default function AreaClosedChart({ chartQuotes, range }: any) {
     [searchParams, pathname]
   )
 
-  const rangeOptions: Range[] = ["1d", "1w", "1m", "3m", "1y"]
+  const rangeOptions = ["1d", "1w", "1m", "3m", "1y"]
+  const rangeLabels = {
+    "1d": "1天",
+    "1w": "1周",
+    "1m": "1月",
+    "3m": "3月",
+    "1y": "1年"
+  }
 
   const isValidRange = (r: string): r is Range =>
     rangeOptions.includes(r as Range)
@@ -360,7 +368,7 @@ export default function AreaClosedChart({ chartQuotes, range }: any) {
                 : "text-muted-foreground"
             }
           >
-            {r.toUpperCase()}
+            {rangeLabels[r]}
           </Button>
         ))}
       </div>

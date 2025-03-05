@@ -23,9 +23,9 @@ import { headers } from "next/headers"
 function isMarketOpen() {
   const now = new Date()
 
-  // Convert to New York time
+  // 转换为中国时间
   const options: Intl.DateTimeFormatOptions = {
-    timeZone: "America/New_York",
+    timeZone: "Asia/Shanghai",
     hour: "numeric",
     minute: "numeric",
     hour12: false,
@@ -34,46 +34,41 @@ function isMarketOpen() {
 
   const timeString = formatter.format(now)
   const [hour, minute] = timeString.split(":").map(Number)
-  const timeInET = hour + minute / 60
+  const timeInCN = hour + minute / 60
 
-  // Get the day of the week in New York time
-  const dayInET = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/New_York" })
+  // 获取中国时间的工作日
+  const dayInCN = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Shanghai" })
   ).getDay()
 
-  // Check if the current time is between 9:30 AM and 4:00 PM ET on a weekday
-  if (dayInET >= 1 && dayInET <= 5 && timeInET >= 9.5 && timeInET < 16) {
+  // 检查当前时间是否在中国A股交易时间内（9:30 AM - 11:30 AM, 13:00 PM - 15:00 PM）
+  if (
+    dayInCN >= 1 && 
+    dayInCN <= 5 && 
+    ((timeInCN >= 9.5 && timeInCN < 11.5) || (timeInCN >= 13 && timeInCN < 15))
+  ) {
     return true
   } else {
     return false
   }
 }
 
-const tickersFutures = [
-  { symbol: "ES=F", shortName: "S&P 500 Futures" },
-  { symbol: "NQ=F", shortName: "NASDAQ Futures" },
-  { symbol: "YM=F", shortName: "Dow Jones Futures" },
-  { symbol: "RTY=F", shortName: "Russell 2000 Futures" },
-  { symbol: "CL=F", shortName: "Crude Oil" },
-  { symbol: "GC=F", shortName: "Gold" },
-  { symbol: "SI=F", shortName: "Silver" },
-  { symbol: "EURUSD=X", shortName: "EUR/USD" },
-  { symbol: "^TNX", shortName: "10 Year Bond" },
-  { symbol: "BTC-USD", shortName: "Bitcoin" },
+// 中国A股指数
+const chinaTickers = [
+  { symbol: "000016", shortName: "上证50" },
+  { symbol: "000300", shortName: "沪深300" },
+  { symbol: "000852", shortName: "中证1000" },
+  { symbol: "CL=F", shortName: "原油" },
+  { symbol: "GC=F", shortName: "黄金" },
+  { symbol: "SI=F", shortName: "白银" },
+  { symbol: "EURUSD=X", shortName: "欧元/美元" },
+  { symbol: "^TNX", shortName: "10年期国债" },
+  { symbol: "BTC-USD", shortName: "比特币" },
 ]
 
-const tickerAfterOpen = [
-  { symbol: "^GSPC", shortName: "S&P 500" },
-  { symbol: "^IXIC", shortName: "NASDAQ" },
-  { symbol: "^DJI", shortName: "Dow Jones" },
-  { symbol: "^RUT", shortName: "Russell 2000" },
-  { symbol: "CL=F", shortName: "Crude Oil" },
-  { symbol: "GC=F", shortName: "Gold" },
-  { symbol: "SI=F", shortName: "Silver" },
-  { symbol: "EURUSD=X", shortName: "EUR/USD" },
-  { symbol: "^TNX", shortName: "10 Year Bond" },
-  { symbol: "BTC-USD", shortName: "Bitcoin" },
-]
+// 使用中国指数作为默认显示的股票列表
+const tickersFutures = chinaTickers
+const tickerAfterOpen = chinaTickers
 
 function getMarketSentiment(changePercentage: number | undefined) {
   if (!changePercentage) {
@@ -105,7 +100,8 @@ export default async function Home({
     range,
     (searchParams?.interval as Interval) || DEFAULT_INTERVAL
   )
-  const news = await fetchStockSearch("^DJI", 1)
+  // 使用沪深300指数替代道琼斯指数获取新闻
+  const news = await fetchStockSearch("000300", 1)
 
   // 使用我们的API获取股票数据
   const fetchStockData = async (symbol: string) => {
@@ -174,14 +170,17 @@ export default async function Home({
           <Card className="relative flex h-full min-h-[15rem] flex-col justify-between overflow-hidden">
             <CardHeader>
               <CardTitle className="z-50 w-fit rounded-full px-4  py-2 font-medium dark:bg-neutral-100/5">
-                The markets are{" "}
-                <strong className={sentimentColor}>{marketSentiment}</strong>
+                市场情绪{" "}
+                <strong className={sentimentColor}>
+                  {marketSentiment === "bullish" ? "看涨" : 
+                   marketSentiment === "bearish" ? "看跌" : "中性"}
+                </strong>
               </CardTitle>
             </CardHeader>
             {news.news[0] && news.news[0].title && (
               <CardFooter className="flex-col items-start">
                 <p className="mb-2 text-sm font-semibold text-neutral-500 dark:text-neutral-500">
-                  What you need to know today
+                  今日市场要闻
                 </p>
                 <Link
                   prefetch={false}
@@ -200,10 +199,10 @@ export default async function Home({
         <div className="w-full lg:w-1/2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Sector Performance</CardTitle>
+              <CardTitle className="text-lg">板块表现</CardTitle>
             </CardHeader>
             <CardContent>
-              <Suspense fallback={<div>Loading...</div>}>
+              <Suspense fallback={<div>加载中...</div>}>
                 <SectorPerformance />
               </Suspense>
             </CardContent>
@@ -211,15 +210,15 @@ export default async function Home({
         </div>
       </div>
       <div>
-        <h2 className="py-4 text-xl font-medium">Markets</h2>
+        <h2 className="py-4 text-xl font-medium">市场行情</h2>
         <Card className="flex flex-col gap-4 p-6 lg:flex-row">
           <div className="w-full lg:w-1/2">
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div>加载中...</div>}>
               <DataTable columns={columns} data={resultsWithTitles} />
             </Suspense>
           </div>
           <div className="w-full lg:w-1/2">
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div>加载中...</div>}>
               <MarketsChart ticker={ticker} range={range} interval={interval} />
             </Suspense>
           </div>

@@ -9,8 +9,17 @@ from .stock_screener import router as screener_router
 router = APIRouter()
 
 # 包含所有子路由器
+# 股票搜索接口 (stock_search_router)
 router.include_router(search_router)
+
+# 股票报价接口 (stock_quote_router)
 router.include_router(quote_router)
+
+# 股票图表接口 (stock_chart_router)
 router.include_router(chart_router)
+
+# 股票摘要接口 (stock_summary_router)
 router.include_router(summary_router)
+
+# 股票筛选器接口 (stock_screener_router)
 router.include_router(screener_router) 
