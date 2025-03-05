@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { Interval, Range } from "@/types/yahoo-finance";
 import AreaClosedChart from "./AreaClosedChart";
 
@@ -22,8 +22,15 @@ export default function ClientMarketsChart({
   const [quoteData, setQuoteData] = useState(initialQuoteData);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 轮询函数 - 获取最新数据
-  const fetchLatestData = async () => {
+  // 当props变化时重置状态
+  useEffect(() => {
+    console.log(`ticker或数据源变化了: ${ticker}, 重置状态`);
+    setChartData(initialChartData);
+    setQuoteData(initialQuoteData);
+  }, [ticker, initialChartData, initialQuoteData]);
+
+  // 轮询函数 - 使用useCallback确保引用稳定性
+  const fetchLatestData = useCallback(async () => {
     try {
       setIsLoading(true);
       console.log(`正在获取最新数据: ${ticker}`);
@@ -48,10 +55,10 @@ export default function ClientMarketsChart({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [ticker, range, interval]); // 添加所有依赖项
 
   // 检查是否在交易时间
-  const isTradeTime = () => {
+  const isTradeTime = useCallback(() => {
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
@@ -68,13 +75,18 @@ export default function ClientMarketsChart({
       (hours === 13) || 
       (hours === 14)
     );
-  };
+  }, []);
 
   useEffect(() => {
     // 只在客户端执行
     if (typeof window === 'undefined') return;
     
-    console.log('设置轮询定时器，轮询间隔: 10秒');
+    console.log(`设置轮询定时器，ticker: ${ticker}, 轮询间隔: 10秒`);
+    
+    // 立即获取一次最新数据
+    if (isTradeTime()) {
+      fetchLatestData();
+    }
     
     // 设置定时器，每10秒轮询一次
     const intervalId = setInterval(() => {
@@ -89,11 +101,10 @@ export default function ClientMarketsChart({
     
     // 清理函数
     return () => {
-      console.log('清理轮询定时器');
+      console.log(`清理轮询定时器，ticker: ${ticker}`);
       clearInterval(intervalId);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticker, range, interval]); // 当这些参数变化时重新设置轮询
+  }, [ticker, range, interval, fetchLatestData, isTradeTime]); // 添加所有依赖项
 
   // 检查是否有图表数据
   if (!chartData || !chartData.quotes || chartData.quotes.length === 0) {
