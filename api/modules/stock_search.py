@@ -118,20 +118,69 @@ async def stock_search(ticker: str, news_count: int = 5) -> Dict:
         else:
             try:
                 # 获取A股股票信息
-                stock_zh_a_spot_df = ak.stock_zh_a_spot_em()
+                # 使用多个数据源尝试获取数据
+                data_sources = [
+                    {"name": "stock_zh_a_spot_em", "handler": lambda: ak.stock_zh_a_spot_em()},
+                    {"name": "stock_zh_a_spot_tx", "handler": lambda: ak.stock_zh_a_spot_tx()},
+                    {"name": "stock_info_a_code_name", "handler": lambda: ak.stock_info_a_code_name()}
+                ]
+                
+                stock_df = None
+                for source in data_sources:
+                    try:
+                        print(f"尝试使用数据源 {source['name']} 获取股票列表")
+                        stock_df = source["handler"]()
+                        
+                        if stock_df is not None and not stock_df.empty:
+                            print(f"从 {source['name']} 成功获取股票列表，数据条数: {len(stock_df)}")
+                            
+                            # 根据不同数据源调整列名映射
+                            column_mappings = {
+                                "stock_zh_a_spot_em": {
+                                    "代码": "code", 
+                                    "名称": "name"
+                                },
+                                "stock_zh_a_spot_tx": {
+                                    "code": "code", 
+                                    "name": "name"
+                                },
+                                "stock_info_a_code_name": {
+                                    "code": "code", 
+                                    "name": "name"
+                                }
+                            }
+                            
+                            # 应用列映射
+                            mapping = column_mappings.get(source["name"], {})
+                            if mapping:
+                                stock_df = stock_df.rename(columns=mapping)
+                                
+                            # 确保必要的列存在
+                            if "code" in stock_df.columns and "name" in stock_df.columns:
+                                break
+                            else:
+                                print(f"数据源 {source['name']} 返回的数据列不匹配，尝试下一个数据源")
+                                stock_df = None
+                    except Exception as e:
+                        print(f"从数据源 {source['name']} 获取数据失败: {str(e)}")
+                        stock_df = None
+                
+                if stock_df is None:
+                    raise Exception("所有数据源都无法获取股票列表")
                 
                 # 搜索匹配的股票
-                filtered = stock_zh_a_spot_df[
-                    stock_zh_a_spot_df['代码'].str.contains(ticker, case=False) |
-                    stock_zh_a_spot_df['名称'].str.contains(ticker, case=False)
+                filtered = stock_df[
+                    stock_df['code'].str.contains(ticker, case=False) |
+                    stock_df['name'].str.contains(ticker, case=False)
                 ]
                 
                 # 转换为SearchQuote格式
                 for _, row in filtered.iterrows():
-                    exchange = 'SHG' if row['代码'].startswith('6') else 'SHE'
+                    code = row['code']
+                    exchange = 'SHG' if code.startswith('6') else 'SHE'
                     quote = SearchQuote(
-                        symbol=row['代码'],
-                        shortname=row['名称'],
+                        symbol=code,
+                        shortname=row['name'],
                         exchange=exchange,
                         type='EQUITY'
                     )

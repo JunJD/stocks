@@ -49,9 +49,58 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
         
         # 获取A股股票列表作为基础数据
         try:
-            stock_info = ak.stock_info_a_code_name()
-            # 限制数量，否则可能过多
-            stock_info = stock_info.head(count)
+            # 使用多个数据源尝试获取股票列表
+            data_sources = [
+                {"name": "stock_info_a_code_name", "handler": lambda: ak.stock_info_a_code_name()},
+                {"name": "stock_zh_a_spot_em", "handler": lambda: ak.stock_zh_a_spot_em()},
+                {"name": "stock_zh_a_spot_tx", "handler": lambda: ak.stock_zh_a_spot_tx()}
+            ]
+            
+            stock_info = None
+            for source in data_sources:
+                try:
+                    print(f"尝试使用数据源 {source['name']} 获取股票筛选数据")
+                    df = source["handler"]()
+                    
+                    if df is not None and not df.empty:
+                        print(f"从 {source['name']} 成功获取股票列表，数据条数: {len(df)}")
+                        
+                        # 根据不同数据源调整列名映射
+                        column_mappings = {
+                            "stock_info_a_code_name": {
+                                "code": "symbol", 
+                                "name": "name"
+                            },
+                            "stock_zh_a_spot_em": {
+                                "代码": "symbol", 
+                                "名称": "name"
+                            },
+                            "stock_zh_a_spot_tx": {
+                                "code": "symbol", 
+                                "name": "name"
+                            }
+                        }
+                        
+                        # 应用列映射
+                        mapping = column_mappings.get(source["name"], {})
+                        if mapping:
+                            df = df.rename(columns=mapping)
+                            
+                        # 确保必要的列存在
+                        if "symbol" in df.columns and "name" in df.columns:
+                            stock_info = df
+                            break
+                        else:
+                            print(f"数据源 {source['name']} 返回的数据列不匹配，尝试下一个数据源")
+                except Exception as e:
+                    print(f"从数据源 {source['name']} 获取数据失败: {str(e)}")
+            
+            # 如果成功获取数据
+            if stock_info is not None:
+                # 限制数量，否则可能过多
+                stock_info = stock_info.head(count)
+            else:
+                raise Exception("所有数据源都无法获取股票列表")
         except Exception as e:
             print(f"获取股票列表失败: {str(e)}")
             # 生成一些模拟数据作为备用
@@ -65,7 +114,7 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
             # 从实际数据中构造股票列表
             for _, row in stock_info.iterrows():
                 stocks.append({
-                    "symbol": row.get('code', ''),
+                    "symbol": row.get('symbol', ''),
                     "name": row.get('name', '')
                 })
         

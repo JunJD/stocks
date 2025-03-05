@@ -213,8 +213,19 @@ export default async function Home({
         <h2 className="py-4 text-xl font-medium">市场行情</h2>
         <Card className="flex flex-col gap-4 p-6 lg:flex-row">
           <div className="w-full lg:w-1/2">
-            <Suspense fallback={<div>加载中...</div>}>
-              <DataTable columns={columns} data={resultsWithTitles} />
+            <Suspense fallback={<div className="py-2">加载市场数据中...</div>}>
+              {resultsWithTitles.length > 0 ? (
+                <DataTable columns={columns} data={resultsWithTitles.filter(quote => 
+                  // 过滤出有效的报价数据
+                  quote && quote.regularMarketPrice !== undefined && 
+                  !isNaN(quote.regularMarketPrice) && 
+                  quote.regularMarketPrice > 0
+                )} />
+              ) : (
+                <div className="flex h-24 w-full items-center justify-center text-sm text-gray-500">
+                  市场数据暂时不可用，请稍后再试
+                </div>
+              )}
             </Suspense>
           </div>
           <div className="w-full lg:w-1/2">
