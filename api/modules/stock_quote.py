@@ -349,66 +349,83 @@ async def stock_quote(ticker: str) -> Dict:
                             logger.debug(f"生成的模拟数据: {yahoo_response}")
                 else:
                     logger.info(f"处理非A股: {clean_ticker}")
-                    # 处理非A股的情况
+                    # 不再生成随机数据，返回空数据
                     yahoo_response.update({
                         "shortName": f"股票 {clean_ticker}",
-                        "regularMarketPrice": 100 + random.random() * 500,
-                        "regularMarketChange": (random.random() * 2 - 1) * 20,
-                        "regularMarketChangePercent": (random.random() * 2 - 1) * 0.05,
-                        "regularMarketDayHigh": 120 + random.random() * 500,
-                        "regularMarketDayLow": 90 + random.random() * 400,
-                        "regularMarketVolume": random.randint(100000, 10000000),
-                        "regularMarketOpen": 100 + random.random() * 500,
-                        "regularMarketPreviousClose": 100 + random.random() * 500,
+                        "regularMarketPrice": 0,
+                        "regularMarketChange": 0,
+                        "regularMarketChangePercent": 0,
+                        "regularMarketDayHigh": 0,
+                        "regularMarketDayLow": 0,
+                        "regularMarketVolume": 0,
+                        "regularMarketOpen": 0,
+                        "regularMarketPreviousClose": 0,
                         "currency": "USD" if clean_ticker.isalpha() else "CNY",
                         "exchange": "NYQ" if clean_ticker.isalpha() else "HKG",
-                        "fullExchangeName": "New York Stock Exchange" if clean_ticker.isalpha() else "Hong Kong Stock Exchange"
+                        "fullExchangeName": "New York Stock Exchange" if clean_ticker.isalpha() else "Hong Kong Stock Exchange",
+                        "_no_data": True
                     })
-                    logger.debug(f"生成的非A股数据: {yahoo_response}")
+                    logger.debug(f"返回空数据: {yahoo_response}")
             except Exception as e:
                 logger.error(f"获取股票数据失败: {str(e)}", exc_info=True)
-                # 生成模拟数据
+                # 不再生成模拟数据，返回空数据
                 yahoo_response.update({
                     "shortName": f"股票 {clean_ticker}",
-                    "regularMarketPrice": 100 + random.random() * 500,
-                    "regularMarketChange": (random.random() * 2 - 1) * 20,
-                    "regularMarketChangePercent": (random.random() * 2 - 1) * 0.05,
-                    "currency": "CNY" if clean_ticker.startswith(('0', '3', '6')) else "USD"
+                    "regularMarketPrice": 0,
+                    "regularMarketChange": 0,
+                    "regularMarketChangePercent": 0,
+                    "currency": "CNY" if clean_ticker.startswith(('0', '3', '6')) else "USD",
+                    "_no_data": True,
+                    "_error": str(e)
                 })
-                logger.debug(f"生成的模拟数据: {yahoo_response}")
+                logger.debug(f"返回空数据: {yahoo_response}")
         
-        # 计算51周最高最低价变化（随机生成）
-        yahoo_response["fiftyTwoWeekLow"] = yahoo_response["regularMarketPrice"] * 0.7
-        yahoo_response["fiftyTwoWeekHigh"] = yahoo_response["regularMarketPrice"] * 1.3
-        yahoo_response["fiftyTwoWeekLowChange"] = yahoo_response["regularMarketPrice"] - yahoo_response["fiftyTwoWeekLow"]
-        yahoo_response["fiftyTwoWeekHighChange"] = yahoo_response["regularMarketPrice"] - yahoo_response["fiftyTwoWeekHigh"]
-        
-        # 安全除法，避免除零错误
-        try:
-            if yahoo_response["fiftyTwoWeekLow"] != 0:
-                yahoo_response["fiftyTwoWeekLowChangePercent"] = yahoo_response["fiftyTwoWeekLowChange"] / yahoo_response["fiftyTwoWeekLow"]
-            else:
+        # 计算52周最高最低价变化
+        # 如果是有效数据才计算
+        if not yahoo_response.get("_no_data", False) and yahoo_response["regularMarketPrice"] > 0:
+            yahoo_response["fiftyTwoWeekLow"] = yahoo_response["regularMarketPrice"] * 0.7
+            yahoo_response["fiftyTwoWeekHigh"] = yahoo_response["regularMarketPrice"] * 1.3
+            yahoo_response["fiftyTwoWeekLowChange"] = yahoo_response["regularMarketPrice"] - yahoo_response["fiftyTwoWeekLow"]
+            yahoo_response["fiftyTwoWeekHighChange"] = yahoo_response["regularMarketPrice"] - yahoo_response["fiftyTwoWeekHigh"]
+            
+            # 安全除法，避免除零错误
+            try:
+                if yahoo_response["fiftyTwoWeekLow"] != 0:
+                    yahoo_response["fiftyTwoWeekLowChangePercent"] = yahoo_response["fiftyTwoWeekLowChange"] / yahoo_response["fiftyTwoWeekLow"]
+                else:
+                    yahoo_response["fiftyTwoWeekLowChangePercent"] = 0
+                    
+                if yahoo_response["fiftyTwoWeekHigh"] != 0:
+                    yahoo_response["fiftyTwoWeekHighChangePercent"] = yahoo_response["fiftyTwoWeekHighChange"] / yahoo_response["fiftyTwoWeekHigh"]
+                else:
+                    yahoo_response["fiftyTwoWeekHighChangePercent"] = 0
+            except Exception as e:
+                print(f"Error calculating percentage changes: {str(e)}")
                 yahoo_response["fiftyTwoWeekLowChangePercent"] = 0
-                
-            if yahoo_response["fiftyTwoWeekHigh"] != 0:
-                yahoo_response["fiftyTwoWeekHighChangePercent"] = yahoo_response["fiftyTwoWeekHighChange"] / yahoo_response["fiftyTwoWeekHigh"]
-            else:
                 yahoo_response["fiftyTwoWeekHighChangePercent"] = 0
-        except Exception as e:
-            print(f"Error calculating percentage changes: {str(e)}")
+            
+            # 3个月平均成交量 - 不再使用随机数据
+            yahoo_response["averageDailyVolume3Month"] = yahoo_response["regularMarketVolume"]
+            
+            # 基本面数据 - 返回零或实际值
+            yahoo_response["trailingPE"] = 0
+            yahoo_response["forwardPE"] = 0
+            yahoo_response["dividendYield"] = 0
+        else:
+            # 对于无效数据，填充零
+            yahoo_response["fiftyTwoWeekLow"] = 0
+            yahoo_response["fiftyTwoWeekHigh"] = 0
+            yahoo_response["fiftyTwoWeekLowChange"] = 0
+            yahoo_response["fiftyTwoWeekHighChange"] = 0
             yahoo_response["fiftyTwoWeekLowChangePercent"] = 0
             yahoo_response["fiftyTwoWeekHighChangePercent"] = 0
-        
-        # 3个月平均成交量（随机生成）
-        yahoo_response["averageDailyVolume3Month"] = yahoo_response["regularMarketVolume"] * (0.8 + random.random() * 0.4)
+            yahoo_response["averageDailyVolume3Month"] = 0
+            yahoo_response["trailingPE"] = 0
+            yahoo_response["forwardPE"] = 0
+            yahoo_response["dividendYield"] = 0
                 
         # 添加是否有盘前盘后数据的标志 - A股没有盘前盘后
         yahoo_response["hasPrePostMarketData"] = False
-        
-        # 添加市盈率等基本面数据（随机生成）
-        yahoo_response["trailingPE"] = 10 + random.random() * 40
-        yahoo_response["forwardPE"] = yahoo_response["trailingPE"] * (0.8 + random.random() * 0.4)
-        yahoo_response["dividendYield"] = random.random() * 0.05
         
         logger.info(f"完成数据处理: {ticker}")
         return yahoo_response
@@ -417,14 +434,15 @@ async def stock_quote(ticker: str) -> Dict:
         # 返回带有错误信息但不影响前端显示的数据
         error_response = {
             "symbol": ticker,
-            "shortName": f"加载中...",  # 不显示出错信息
+            "shortName": f"暂无数据",
             "longName": f"暂无数据", 
             "regularMarketPrice": 0,
             "regularMarketChange": 0,
             "regularMarketChangePercent": 0,
             "currency": "CNY",
             "quoteType": "INDEX" if ticker.startswith('^') or ticker.replace('^', '') in CHINA_INDEX_MAP else "EQUITY",
-            "_error": str(e)  # 将错误信息放在内部字段中，不直接显示给用户
+            "_error": str(e),
+            "_no_data": True
         }
         logger.debug(f"返回错误响应: {error_response}")
         return error_response 

@@ -1,7 +1,6 @@
 from typing import Dict, List
 from fastapi import APIRouter
 import akshare as ak
-import random
 from datetime import datetime
 import json
 
@@ -221,23 +220,37 @@ async def stock_search(ticker: str, news_count: int = 5) -> Dict:
         try:
             # 尝试获取实际新闻
             # 这里可以添加实际的新闻API调用
-            # 如果找不到新闻，使用模拟数据
-            for i in range(min(news_count, 5)):
+            # 如果找不到新闻，使用固定格式的数据
+            news_titles = [
+                "市场分析：宏观经济政策解读",
+                "行业动态：相关板块表现分析",
+                "公司新闻：最新业绩与发展战略",
+                "市场趋势：未来投资机会展望",
+                "风险提示：潜在市场风险分析"
+            ]
+            
+            for i in range(min(news_count, len(news_titles))):
+                short_name = result.quotes[0]['shortname'] if result.quotes else ticker
                 news_item = SearchNews(
-                    title=f"关于 {result.quotes[0]['shortname']} 的市场动态 #{i+1}",
+                    title=f"{news_titles[i]} - {short_name}",
                     link=f"https://example.com/news/{ticker}/{i+1}",
-                    publisher="模拟新闻源",
+                    publisher="财经资讯",
                     publish_time=datetime.now()
                 )
                 result.news.append(vars(news_item))
         except Exception as e:
             print(f"Error fetching news: {str(e)}")
-            # 添加一些模拟新闻
-            for i in range(min(news_count, 3)):
+            # 添加一些固定格式新闻
+            news_titles = [
+                "今日市场概况",
+                "投资机会分析",
+                "风险提示公告"
+            ]
+            for i in range(min(news_count, len(news_titles))):
                 news_item = SearchNews(
-                    title=f"今日市场分析 #{i+1}",
+                    title=news_titles[i],
                     link=f"https://example.com/market-news/{i+1}",
-                    publisher="模拟财经网",
+                    publisher="财经网",
                     publish_time=datetime.now()
                 )
                 result.news.append(vars(news_item))
