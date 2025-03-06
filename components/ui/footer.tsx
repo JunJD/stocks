@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { HomeIcon, StarIcon, BellIcon, SearchIcon } from "lucide-react"
+import { MapIcon, StarIcon, BellIcon, SearchIcon } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -9,11 +9,20 @@ export default function Footer() {
       <div className="container py-2">
         <div className="flex justify-around items-center">
           <Link
-            href="/watchlist"
+            href="/"
             className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <StarIcon className="h-5 w-5" />
-            <span className="text-xs mt-1">自选</span>
+            <span className="text-xs mt-1">市场</span>
+          </Link>
+
+          {/* 热力图 */}
+          <Link
+            href="/screener"
+            className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <MapIcon className="h-5 w-5" />
+            <span className="text-xs mt-1">热力图</span>
           </Link>
           
           <Link

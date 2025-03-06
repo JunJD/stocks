@@ -53,24 +53,6 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     header: "公司",
   },
   {
-    accessorKey: "P/E",
-    meta: "市盈率",
-    sortUndefined: -1,
-    header: ({ column }) => {
-      return <div className="text-right">市盈率</div>
-    },
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const pe = row.original.trailingPE;
-
-      if (pe === undefined || pe === null || pe <= 0) {
-        return <div className="text-right">N/A</div>
-      }
-
-      return <div className="text-right">{pe.toFixed(3)}</div>
-    },
-  },
-  {
     accessorKey: "regularMarketPrice",
     meta: "价格",
     header: () => <div className="text-right">价格</div>,
@@ -231,6 +213,24 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
       }
 
       return <div className="text-right">{formatMarketCap(marketCap)}</div>
+    },
+  },
+  {
+    accessorKey: "P/E",
+    meta: "市盈率",
+    sortUndefined: -1,
+    header: ({ column }) => {
+      return <div className="text-right">市盈率</div>
+    },
+    cell: (props: CellContext<ScreenerQuote, unknown>) => {
+      const { row } = props
+      const pe = row.original.trailingPE;
+
+      if (pe === undefined || pe === null || pe <= 0) {
+        return <div className="text-right">N/A</div>
+      }
+
+      return <div className="text-right">{pe.toFixed(3)}</div>
     },
   },
 ]
