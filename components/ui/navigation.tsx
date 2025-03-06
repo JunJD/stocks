@@ -15,8 +15,8 @@ import { usePathname } from "next/navigation"
 import CommandMenu from "./command-menu"
 
 const NAVIGATION = [
-  { title: "Markets", href: "/" },
-  { title: "Screener", href: "/screener" },
+  { title: "市场", href: "/" },
+  { title: "股票", href: "/screener" },
 ]
 
 export default function Navigation() {

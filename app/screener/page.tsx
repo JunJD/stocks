@@ -43,7 +43,7 @@ export default async function ScreenerPage({
   return (
     <div className="container mx-auto py-6 mb-6">
       <div className="mb-6 space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">股票筛选器</h1>
+        {/* <h1 className="text-3xl font-bold tracking-tight">股票筛选器</h1> */}
         <p className="text-muted-foreground">
           当前筛选: <span className="font-medium">{currentScreenerLabel}</span>
         </p>
