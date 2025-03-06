@@ -63,6 +63,7 @@ interface InteractionsProps {
   xScale: any
   data: any[]
   dispatch: any
+  margin?: { left: number; top: number; right: number; bottom: number }
 }
 
 function Interactions({
@@ -71,33 +72,79 @@ function Interactions({
   xScale,
   data,
   dispatch,
+  margin = { left: 0, top: 0, right: 0, bottom: 0 }
 }: InteractionsProps) {
   const handleMove = useCallback(
     (event: React.PointerEvent<SVGRectElement>) => {
       const point = localPoint(event)
       if (!point) return
 
+      // 需要调整鼠标位置，考虑到g元素的transform偏移
+      const adjustedX = point.x - margin.left;
+      const adjustedY = point.y - margin.top;
+
+      // 确保鼠标位置在有效范围内
       const pointer = {
-        x: Math.max(0, Math.min(width, Math.floor(point.x))),
-        y: Math.max(0, Math.min(height, Math.floor(point.y))),
+        x: Math.max(0, Math.min(width, Math.floor(adjustedX))),
+        y: Math.max(0, Math.min(height, Math.floor(adjustedY))),
       }
 
       const x0 = pointer.x
+      
+      // 从数据点映射到屏幕坐标
       const dates = data.map((d: any) => xScale(toDate(d)))
+      
+      // 找到最接近鼠标位置的日期点
       const index = bisectRight(dates, x0)
+      
+      // 防止索引越界
+      if (index <= 0) {
+        return dispatch({ 
+          type: "UPDATE", 
+          ...data[0], 
+          x: dates[0], 
+          y: pointer.y, 
+          width 
+        });
+      }
+      
+      if (index >= data.length) {
+        return dispatch({ 
+          type: "UPDATE", 
+          ...data[data.length - 1], 
+          x: dates[data.length - 1], 
+          y: pointer.y, 
+          width 
+        });
+      }
 
+      // 选择更近的点
       const d0 = data[index - 1]
       const d1 = data[index]
-
+      
+      // 计算鼠标位置与前后两个点的距离
+      const x0Value = x0
+      const x1Value = dates[index - 1]
+      const x2Value = dates[index]
+      
+      // 选择距离更近的点
       let d = d0
-      if (d1 && toDate(d1)) {
-        const diff0 = x0.valueOf() - toDate(d0).valueOf()
-        const diff1 = toDate(d1).valueOf() - x0.valueOf()
-        d = diff0 > diff1 ? d1 : d0
+      let xPoint = x1Value
+      
+      if (Math.abs(x0Value - x2Value) < Math.abs(x0Value - x1Value)) {
+        d = d1
+        xPoint = x2Value
       }
-      dispatch({ type: "UPDATE", ...d, ...pointer, width })
+      
+      dispatch({ 
+        type: "UPDATE", 
+        ...d, 
+        x: xPoint, // 使用实际数据点的x坐标，而不是鼠标位置
+        y: pointer.y, 
+        width 
+      })
     },
-    [xScale, data, dispatch, width]
+    [margin.left, margin.top, width, height, data, dispatch, xScale]
   )
 
   const handleLeave = useCallback(() => dispatch({ type: "CLEAR" }), [dispatch])
@@ -348,7 +395,7 @@ function GraphSlider({ data, width, height, top, state, dispatch }: any) {
             <text
               textAnchor={state.x + 8 > innerWidth / 2 ? "end" : "start"}
               x={state.x + 8 > innerWidth / 2 ? state.x - 8 : state.x + 6}
-              y={0}
+              y={8}
               dy={"0.75em"}
               fill={state.hovered ? "dodgerblue" : isIncreasing ? "green" : "red"}
               className="text-base font-medium"
@@ -411,6 +458,7 @@ function GraphSlider({ data, width, height, top, state, dispatch }: any) {
           data={data}
           xScale={xScale}
           dispatch={dispatch}
+          margin={margin}
         />
       </g>
     </svg>
