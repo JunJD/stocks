@@ -15,6 +15,7 @@ export interface ScreenerQuote {
   averageDailyVolume3Month?: number
   marketCap?: number
   epsTrailingTwelveMonths?: number
+  trailingPE?: number
   [key: string]: any
 }
 
@@ -52,21 +53,9 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     },
     cell: (props: CellContext<ScreenerQuote, unknown>) => {
       const { row } = props
+      const pe = row.original.trailingPE;
 
-      const regularMarketPrice = row.original.regularMarketPrice
-      const epsTrailingTwelveMonths = row.original.epsTrailingTwelveMonths || 0
-
-      if (
-        regularMarketPrice === undefined ||
-        epsTrailingTwelveMonths === undefined ||
-        regularMarketPrice === null ||
-        epsTrailingTwelveMonths === null
-      ) {
-        return <div className="text-right">N/A</div>
-      }
-
-      const pe = regularMarketPrice / epsTrailingTwelveMonths
-      if (pe < 0) {
+      if (pe === undefined || pe === null || pe <= 0) {
         return <div className="text-right">N/A</div>
       }
 

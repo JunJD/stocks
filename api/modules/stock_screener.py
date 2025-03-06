@@ -77,13 +77,20 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
                     # 构建股票数据
                     stock = {
                         "symbol": display_symbol,
-                        "name": row["name"],
-                        "price": float(row["price"]),
-                        "change": float(row["change"]),
-                        "changePct": float(row["changePct"]) / 100,  # 转换为小数
+                        "shortName": row["name"],
+                        "regularMarketPrice": float(row["price"]),
+                        "regularMarketChange": float(row["change"]),
+                        "regularMarketChangePercent": float(row["changePct"]) / 100,  # 转换为小数
+                        "regularMarketVolume": float(row["成交量"]) if "成交量" in row and not pd.isna(row["成交量"]) else 0,
+                        "regularMarketDayHigh": float(row["最高"]) if "最高" in row and not pd.isna(row["最高"]) else 0,
+                        "regularMarketDayLow": float(row["最低"]) if "最低" in row and not pd.isna(row["最低"]) else 0,
+                        "regularMarketOpen": float(row["开盘"]) if "开盘" in row and not pd.isna(row["开盘"]) else 0,
+                        "regularMarketPreviousClose": float(row["昨收"]) if "昨收" in row and not pd.isna(row["昨收"]) else 0,
+                        "trailingPE": float(row["pe"]) if "pe" in row and not pd.isna(row["pe"]) else 0,
                         "marketCap": float(row["marketCap"]) if "marketCap" in row else 0,
-                        "pe": float(row["pe"]) if "pe" in row and not pd.isna(row["pe"]) else 0,
-                        "sector": row["sector"] if "sector" in row else "未知"
+                        "averageDailyVolume3Month": float(row["成交量"]) if "成交量" in row and not pd.isna(row["成交量"]) else 0,
+                        "sector": row["sector"] if "sector" in row else "未知",
+                        "currency": "CNY"
                     }
                     response["quotes"].append(stock)
                     
