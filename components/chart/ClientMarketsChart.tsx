@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react';
-import type { Interval, Range } from "@/types/yahoo-finance";
+import type { Interval } from "@/types/yahoo-finance";
 import AreaClosedChart from "./AreaClosedChart";
 
 // 客户端组件 - 处理轮询和状态更新
@@ -9,13 +9,11 @@ export default function ClientMarketsChart({
   initialChartData, 
   initialQuoteData, 
   ticker, 
-  range, 
   interval 
 }: { 
   initialChartData: any, 
   initialQuoteData: any,
   ticker: string,
-  range: Range,
   interval: Interval
 }) {
   const [chartData, setChartData] = useState(initialChartData);
@@ -38,7 +36,7 @@ export default function ClientMarketsChart({
       const response = await fetch(`/api/py/stock/quote?ticker=${ticker}`);
       const quoteResult = await response.json();
       
-      const chartResponse = await fetch(`/api/py/stock/chart?ticker=${ticker}&range=${range}&interval=${interval}`);
+      const chartResponse = await fetch(`/api/py/stock/chart?ticker=${ticker}&interval=${interval}`);
       const chartResult = await chartResponse.json();
       
       if (chartResult && chartResult.quotes && chartResult.quotes.length > 0) {
@@ -55,7 +53,7 @@ export default function ClientMarketsChart({
     } finally {
       setIsLoading(false);
     }
-  }, [ticker, range, interval]); // 添加所有依赖项
+  }, [ticker, interval]); // 添加所有依赖项
 
   // 检查是否在交易时间
   const isTradeTime = useCallback(() => {
@@ -104,7 +102,7 @@ export default function ClientMarketsChart({
       console.log(`清理轮询定时器，ticker: ${ticker}`);
       clearInterval(intervalId);
     };
-  }, [ticker, range, interval, fetchLatestData, isTradeTime]); // 添加所有依赖项
+  }, [ticker, interval, fetchLatestData, isTradeTime]); // 添加所有依赖项
 
   // 检查是否有图表数据
   if (!chartData || !chartData.quotes || chartData.quotes.length === 0) {
@@ -156,7 +154,7 @@ export default function ClientMarketsChart({
         </div>
       </div>
       <div className="h-full w-full">
-        <AreaClosedChart chartQuotes={chartQuotes} range={range} />
+        <AreaClosedChart chartQuotes={chartQuotes} />
       </div>
     </div>
   );

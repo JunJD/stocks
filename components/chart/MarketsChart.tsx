@@ -6,19 +6,17 @@ import ClientMarketsChart from "./ClientMarketsChart"
 // 服务器组件 - 负责获取初始数据
 export default async function MarketsChart({
   ticker,
-  range,
   interval,
 }: {
   ticker: string
-  range: Range
   interval: Interval
 }) {
-  console.log(`加载 MarketsChart: ticker=${ticker}, range=${range}, interval=${interval}`);
+  console.log(`加载 MarketsChart: ticker=${ticker}, interval=${interval}`);
   
   try {
     // 并行获取图表数据和报价数据
     const [chartData, quoteData] = await Promise.all([
-      fetchChartData(ticker, range, interval),
+      fetchChartData(ticker, interval),
       fetchQuote(ticker),
     ]);
     
@@ -40,7 +38,6 @@ export default async function MarketsChart({
         initialChartData={chartData} 
         initialQuoteData={quoteData} 
         ticker={ticker}
-        range={range}
         interval={interval}
       />
     );

@@ -14,7 +14,6 @@ export const validateInterval = (range: Range, interval: Interval): Interval =>
 
 export async function fetchChartData(
   ticker: string,
-  range: Range,
   interval: Interval
 ) {
   noStore()
@@ -29,7 +28,7 @@ export async function fetchChartData(
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
     
     // 构建完整的 URL
-    const url = `${protocol}://${host}/api/py/stock/chart?ticker=${encodedTicker}&range=${range}&interval=${interval}`
+    const url = `${protocol}://${host}/api/py/stock/chart?ticker=${encodedTicker}&interval=${interval}`
     
     // 调用 Python FastAPI 接口
     const response = await fetch(url)

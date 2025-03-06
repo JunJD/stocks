@@ -102,14 +102,15 @@ class StockDataProvider:
                 symbol=clean_symbol, 
                 period=period,
                 start_date=start_time, 
-                end_date=end_time
+                end_date=end_time,
+                adjust='qfq'
             )
         except Exception as e:
             logger.error(f"获取股票分时数据失败(stock_zh_a_hist_min_em): '{symbol}'", exc_info=True)
             return None
     
     @log_akshare_call
-    def get_stock_min_sina(self, symbol: str) -> Optional[pd.DataFrame]:
+    def get_stock_min_sina(self, symbol: str, period: str = '1') -> Optional[pd.DataFrame]:
         """
         获取股票分时数据(通用API)
         :param symbol: 股票代码 (如 '600519' 或 'sh600519')
@@ -129,13 +130,13 @@ class StockDataProvider:
                 formatted_symbol = f"sz{symbol}"
                 
             logger.debug(f"尝试使用stock_zh_a_minute获取 {symbol}(处理后:{formatted_symbol}) 的分时数据")
-            return ak.stock_zh_a_minute(symbol=formatted_symbol)
+            return ak.stock_zh_a_minute(symbol=formatted_symbol, period=period)
         except Exception as e:
             logger.error(f"获取股票分时数据失败(stock_zh_a_minute): '{symbol}'", exc_info=True)
             return None
     
     @log_akshare_call
-    def get_index_min_sina(self, symbol: str) -> Optional[pd.DataFrame]:
+    def get_index_min_sina(self, symbol: str, period: str = '1') -> Optional[pd.DataFrame]:
         """
         获取指数分时数据
         :param symbol: 指数代码 (如 'sh000016', 'sh000300' 或 '000016', '000300')
@@ -157,7 +158,7 @@ class StockDataProvider:
             logger.debug(f"尝试使用index_zh_a_hist_min_em获取 {symbol}(处理后:{clean_symbol}) 的分时数据，时间范围: {start_date} 至 {end_date}")
             return ak.index_zh_a_hist_min_em(
                 symbol=clean_symbol, 
-                period="1", 
+                period=period, 
                 start_date=start_date, 
                 end_date=end_date
             )
@@ -182,7 +183,7 @@ class StockDataProvider:
             data_sources = [
                 {
                     "name": "index_zh_a_hist_min_em",
-                    "handler": lambda: self.get_index_min_sina(clean_ticker),
+                    "handler": lambda: self.get_index_min_sina(clean_ticker, period=interval),
                     "mapper": self._map_index_min_sina
                 }
             ]
@@ -196,7 +197,7 @@ class StockDataProvider:
                 },
                 {
                     "name": "stock_zh_a_minute",
-                    "handler": lambda: self.get_stock_min_sina(clean_ticker),
+                    "handler": lambda: self.get_stock_min_sina(clean_ticker, period=interval),
                     "mapper": self._map_stock_min_sina
                 }
             ]

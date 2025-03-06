@@ -23,17 +23,15 @@ CHINA_INDEX_MAP = {
 @router.get("/stock/chart")
 async def stock_chart(
     ticker: str, 
-    range: str = "1d", 
     interval: str = "1m"
 ) -> Dict[str, Any]:
     """
     获取股票图表数据API
     :param ticker: 股票代码
-    :param range: 时间范围 (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
     :param interval: 时间间隔 (1m, 5m, 15m, 30m, 60m, 1d, 1wk, 1mo)
     :return: 图表数据
     """
-    logger.info(f"接收到图表数据请求: ticker={ticker}, range={range}, interval={interval}")
+    logger.info(f"接收到图表数据请求: ticker={ticker}, interval={interval}")
     
     try:
         # 标准化股票代码

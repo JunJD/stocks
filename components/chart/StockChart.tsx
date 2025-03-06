@@ -46,7 +46,7 @@ export default async function StockChart({
   range,
   interval,
 }: StockGraphProps) {
-  const chartData = await fetchChartData(ticker, range, interval)
+  const chartData = await fetchChartData(ticker, interval)
   const quoteData = await fetchQuote(ticker)
 
   const [chart, quote] = await Promise.all([chartData, quoteData]) as [any, Quote]

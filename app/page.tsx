@@ -1,18 +1,12 @@
 import { DataTable } from "@/components/stocks/markets/data-table"
 import {
   Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { DEFAULT_INTERVAL, DEFAULT_RANGE } from "@/lib/yahoo-finance/constants"
 import { Interval } from "@/types/yahoo-finance"
 import { Suspense } from "react"
 import MarketsChart from "@/components/chart/MarketsChart"
-import Link from "next/link"
 import { columns } from "@/components/stocks/markets/columns"
-import SectorPerformance from "@/components/stocks/SectorPerformance"
 import {
   validateInterval,
   validateRange,
@@ -230,7 +224,7 @@ export default async function Home({
           </div>
           <div className="w-full lg:w-1/2">
             <Suspense fallback={<div>加载中...</div>}>
-              <MarketsChart ticker={ticker} range={range} interval={interval} />
+              <MarketsChart ticker={ticker} interval={interval} />
             </Suspense>
           </div>
         </Card>

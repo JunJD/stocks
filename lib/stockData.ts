@@ -39,7 +39,7 @@ export async function getQuoteData(ticker: string) {
  */
 export async function getChartData(ticker: string, range: Range, interval: Interval) {
   try {
-    const response = await fetch(`/api/py/stock/chart?ticker=${ticker}&range=${range}&interval=${interval}`);
+    const response = await fetch(`/api/py/stock/chart?ticker=${ticker}&interval=${interval}`);
     if (!response.ok) {
       throw new Error(`获取图表数据失败: ${response.status}`);
     }
