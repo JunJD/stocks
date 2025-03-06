@@ -28,19 +28,34 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSearchParams, usePathname, useRouter } from "next/navigation"
-import { ScreenerOptions } from "./screener-options"
 import { useCallback, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DataTableViewOptions } from "./column-toggle"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu"
+
+// 定义筛选器选项
+const screenerOptions = [
+  { id: "all_stocks", label: "全部股票" },
+  { id: "most_actives", label: "成交活跃" },
+  { id: "day_gainers", label: "日涨幅榜" },
+  { id: "day_losers", label: "日跌幅榜" },
+  { id: "small_cap_gainers", label: "小盘涨幅榜" },
+  { id: "growth_technology_stocks", label: "科技成长股" },
+];
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
 }
 
-export function DataTable<TData, TValue>({
+export function ScreenerTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -74,6 +89,15 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
   })
 
+  const getScreenerParam = useCallback(() => {
+    return searchParams.get("screener") || "most_actives";
+  }, [searchParams]);
+
+  const getCurrentScreenerLabel = useCallback(() => {
+    const currentValue = getScreenerParam();
+    return screenerOptions.find(option => option.id === currentValue)?.label || "成交活跃";
+  }, [getScreenerParam]);
+
   const handleSelect = useCallback(
     (value: string) => {
       const params = new URLSearchParams(searchParams)
@@ -90,33 +114,65 @@ export function DataTable<TData, TValue>({
   )
 
   return (
-    <div className="w-full">
-      <div className="flex items-center pb-4">
-        <Select onValueChange={(value) => handleSelect(value)}>
-          <SelectTrigger className="w-[180px] bg-card">
-            <SelectValue placeholder="Most actives" />
-          </SelectTrigger>
-          <SelectContent>
-            {ScreenerOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="ml-2 flex items-center">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-1 items-center space-x-2">
           <Input
-            placeholder="Filter company..."
-            value={
-              (table.getColumn("shortName")?.getFilterValue() as string) ?? ""
-            }
-            onChange={(event) =>
-              table.getColumn("shortName")?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm bg-background caret-blue-500"
+            placeholder="搜索股票代码或公司名称..."
+            value={(table.getColumn("shortName")?.getFilterValue() as string) ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              // 同时筛选股票代码和公司名称
+              table.getColumn("shortName")?.setFilterValue(value);
+              
+              // 如果有symbol列，也对其进行筛选
+              if (table.getColumn("symbol")) {
+                table.getColumn("symbol")?.setFilterValue(value);
+              }
+            }}
+            className="h-8 w-[150px] lg:w-[250px]"
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-8 w-[150px] lg:w-[250px]">
+                筛选器: {getCurrentScreenerLabel()}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {screenerOptions.map((option) => (
+                <DropdownMenuItem key={option.id} onSelect={() => handleSelect(option.id)}>
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DataTableViewOptions table={table} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto h-8">
+              显示列
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => {
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
+                    {typeof column.columnDef.meta === 'string' ? column.columnDef.meta : column.id}
+                  </DropdownMenuCheckboxItem>
+                )
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <Card>
         <CardContent className="pt-6">
@@ -124,18 +180,25 @@ export function DataTable<TData, TValue>({
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={
+                            header.column.getCanSort()
+                              ? "cursor-pointer select-none"
+                              : ""
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </div>
+                      )}
+                    </TableHead>
+                  ))}
                 </TableRow>
               ))}
             </TableHeader>
@@ -147,10 +210,7 @@ export function DataTable<TData, TValue>({
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="min-w-20 max-w-40 truncate"
-                      >
+                      <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
@@ -165,7 +225,7 @@ export function DataTable<TData, TValue>({
                     colSpan={columns.length}
                     className="h-24 text-center"
                   >
-                    No results.
+                    暂无结果
                   </TableCell>
                 </TableRow>
               )}
@@ -175,7 +235,7 @@ export function DataTable<TData, TValue>({
       </Card>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Rows per page</p>
+          <p className="text-sm font-medium">每页行数</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -195,8 +255,8 @@ export function DataTable<TData, TValue>({
           </Select>
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount()}
+          第 {table.getState().pagination.pageIndex + 1} 页，共{" "}
+          {table.getPageCount()} 页
         </div>
         <Button
           variant="outline"
@@ -204,7 +264,7 @@ export function DataTable<TData, TValue>({
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
-          Previous
+          上一页
         </Button>
         <Button
           variant="outline"
@@ -212,7 +272,7 @@ export function DataTable<TData, TValue>({
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
-          Next
+          下一页
         </Button>
       </div>
     </div>
