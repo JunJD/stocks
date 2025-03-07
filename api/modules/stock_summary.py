@@ -80,7 +80,7 @@ async def quote_summary(ticker: str) -> Dict:
             "assetProfile": {
                 "industry": "未知",
                 "sector": "未知",
-                "longBusinessSummary": f"这是{quote_data.get('shortName', ticker)}的业务摘要。"
+                "longBusinessSummary": ""
             },
             "price": {
                 "regularMarketPrice": {"raw": quote_data.get("regularMarketPrice", 0)},

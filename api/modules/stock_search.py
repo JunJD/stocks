@@ -186,25 +186,14 @@ async def stock_search(ticker: str, news_count: int = 5) -> Dict:
                     result.quotes.append(vars(quote))
             except Exception as e:
                 print(f"Error fetching A-share info: {str(e)}")
-                # 如果没有结果，添加一些模拟数据
-                if "00" in ticker or "60" in ticker or "30" in ticker:
-                    # 可能是A股股票
-                    quote = SearchQuote(
-                        symbol=ticker,
-                        shortname=f"模拟股票 {ticker}",
-                        exchange='SHG' if ticker.startswith('6') else 'SHE',
-                        type='EQUITY'
-                    )
-                    result.quotes.append(vars(quote))
-                else:
-                    # 尝试当作美股处理
-                    quote = SearchQuote(
-                        symbol=ticker.upper(),
-                        shortname=f"模拟股票 {ticker.upper()}",
-                        exchange='NYQ',
-                        type='EQUITY'
-                    )
-                    result.quotes.append(vars(quote))
+                # 不再添加模拟数据，返回空结果
+                quote = SearchQuote(
+                    symbol=ticker,
+                    shortname="未找到结果",
+                    exchange='N/A',
+                    type='N/A'
+                )
+                result.quotes.append(vars(quote))
         
         # 如果没有找到结果，添加对应的空结果
         if not result.quotes:
@@ -219,41 +208,12 @@ async def stock_search(ticker: str, news_count: int = 5) -> Dict:
         # 获取相关新闻
         try:
             # 尝试获取实际新闻
-            # 这里可以添加实际的新闻API调用
-            # 如果找不到新闻，使用固定格式的数据
-            news_titles = [
-                "市场分析：宏观经济政策解读",
-                "行业动态：相关板块表现分析",
-                "公司新闻：最新业绩与发展战略",
-                "市场趋势：未来投资机会展望",
-                "风险提示：潜在市场风险分析"
-            ]
-            
-            for i in range(min(news_count, len(news_titles))):
-                short_name = result.quotes[0]['shortname'] if result.quotes else ticker
-                news_item = SearchNews(
-                    title=f"{news_titles[i]} - {short_name}",
-                    link=f"https://example.com/news/{ticker}/{i+1}",
-                    publisher="财经资讯",
-                    publish_time=datetime.now()
-                )
-                result.news.append(vars(news_item))
+            # 这里应添加实际的新闻API调用
+            # 如果没有实际数据，返回空数组而不是模拟数据
+            pass
         except Exception as e:
             print(f"Error fetching news: {str(e)}")
-            # 添加一些固定格式新闻
-            news_titles = [
-                "今日市场概况",
-                "投资机会分析",
-                "风险提示公告"
-            ]
-            for i in range(min(news_count, len(news_titles))):
-                news_item = SearchNews(
-                    title=news_titles[i],
-                    link=f"https://example.com/market-news/{i+1}",
-                    publisher="财经网",
-                    publish_time=datetime.now()
-                )
-                result.news.append(vars(news_item))
+            # 不再添加模拟新闻，返回空数组
         
         result.count = len(result.quotes)
         result.totalTime = 0

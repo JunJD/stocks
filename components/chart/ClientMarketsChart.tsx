@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import type { Interval } from "@/types/yahoo-finance";
 import AreaClosedChart from "./AreaClosedChart";
+import useStockData from '@/store/useStockData';
 
-// 客户端组件 - 处理轮询和状态更新
+// 客户端组件 - 通过全局状态管理获取和轮询数据
 export default function ClientMarketsChart({ 
   initialChartData, 
   initialQuoteData, 
@@ -16,99 +17,19 @@ export default function ClientMarketsChart({
   ticker: string,
   interval: Interval
 }) {
-  const [chartData, setChartData] = useState(initialChartData);
-  const [quoteData, setQuoteData] = useState(initialQuoteData);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // 当props变化时重置状态
-  useEffect(() => {
-    console.log(`ticker或数据源变化了: ${ticker}, 重置状态`);
-    setChartData(initialChartData);
-    setQuoteData(initialQuoteData);
-  }, [ticker, initialChartData, initialQuoteData]);
-
-  // 轮询函数 - 使用useCallback确保引用稳定性
-  const fetchLatestData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      console.log(`正在获取最新数据: ${ticker}`);
-      
-      const response = await fetch(`/api/py/stock/quote?ticker=${ticker}`);
-      const quoteResult = await response.json();
-      
-      const chartResponse = await fetch(`/api/py/stock/chart?ticker=${ticker}&interval=${interval}`);
-      const chartResult = await chartResponse.json();
-      
-      if (chartResult && chartResult.quotes && chartResult.quotes.length > 0) {
-        console.log(`获取到 ${chartResult.quotes.length} 条图表数据`);
-        setChartData(chartResult);
-      }
-      
-      if (quoteResult) {
-        console.log(`获取到最新报价数据: ${quoteResult.shortName || ticker}`);
-        setQuoteData(quoteResult);
-      }
-    } catch (error) {
-      console.error('轮询数据失败:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [ticker, interval]); // 添加所有依赖项
-
-  // 检查是否在交易时间
-  const isTradeTime = useCallback(() => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const day = now.getDay(); // 0是周日，6是周六
-    
-    // 周末不轮询
-    if (day === 0 || day === 6) return false;
-    
-    // 交易时间：9:30-11:30, 13:00-15:00
-    return (
-      (hours === 9 && minutes >= 30) || 
-      (hours === 10) || 
-      (hours === 11 && minutes <= 30) ||
-      (hours === 13) || 
-      (hours === 14)
-    );
-  }, []);
-
-  useEffect(() => {
-    // 只在客户端执行
-    if (typeof window === 'undefined') return;
-    
-    console.log(`设置轮询定时器，ticker: ${ticker}, 轮询间隔: 10秒`);
-    
-    // 立即获取一次最新数据
-    if (isTradeTime()) {
-      fetchLatestData();
-    }
-    
-    // 设置定时器，每10秒轮询一次
-    const intervalId = setInterval(() => {
-      // 检查是否在交易时间内
-      if (isTradeTime()) {
-        console.log('交易时间内，获取最新数据...');
-        fetchLatestData();
-      } else {
-        console.log('非交易时间，跳过轮询');
-      }
-    }, 10000); // 10秒间隔
-    
-    // 清理函数
-    return () => {
-      console.log(`清理轮询定时器，ticker: ${ticker}`);
-      clearInterval(intervalId);
-    };
-  }, [ticker, interval, fetchLatestData, isTradeTime]); // 添加所有依赖项
+  // 使用自定义Hook获取股票数据，10秒轮询一次
+  const { chartData, quoteData, isLoading, error } = useStockData(ticker, interval, 10000);
+  
+  // 使用初始数据或全局状态中的数据
+  const currentChartData = chartData || initialChartData;
+  const currentQuoteData = quoteData || initialQuoteData;
 
   // 检查是否有图表数据
-  if (!chartData || !chartData.quotes || chartData.quotes.length === 0) {
+  if (!currentChartData || !currentChartData.quotes || currentChartData.quotes.length === 0) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center">
         <span className="text-sm text-gray-500">没有可用数据</span>
+        {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
     );
   }
@@ -117,26 +38,26 @@ export default function ClientMarketsChart({
   const isChinaIndex = ["sh000016", "sh000300", "sh000852"].includes(ticker);
   
   // 获取货币符号 - 根据货币类型设置
-  let currencySymbol = "¥"; // 默认人民币符号
-  if (quoteData.currency === "USD") {
+  let currencySymbol = "¥"; 
+  if (currentQuoteData.currency === "USD") {
     currencySymbol = "$";
-  } else if (quoteData.currency === "EUR") {
+  } else if (currentQuoteData.currency === "EUR") {
     currencySymbol = "€";
-  } else if (quoteData.currency === "GBP") {
+  } else if (currentQuoteData.currency === "GBP") {
     currencySymbol = "£";
   }
   
   // 准备图表数据
-  const chartQuotes = chartData.quotes.map((quote: any) => ({
+  const chartQuotes = currentChartData.quotes.map((quote: any) => ({
     date: quote.date,
     close: Number(quote.close),
   }));
   
   // 获取最新价格
-  const price = quoteData.regularMarketPrice || 0;
+  const price = currentQuoteData.regularMarketPrice || 0;
   
   // 获取涨跌幅
-  const changePercent = quoteData.regularMarketChangePercent || 0;
+  const changePercent = currentQuoteData.regularMarketChangePercent || 0;
   const changePercentString = (changePercent * 100).toFixed(3) + "%";
   const changeColor = changePercent > 0 ? "text-green-500" : changePercent < 0 ? "text-red-500" : "text-gray-500";
 
@@ -144,7 +65,7 @@ export default function ClientMarketsChart({
     <div className="flex h-full w-full flex-col">
       <div className="mb-4">
         <div className="flex items-baseline">
-          <h2 className="text-xl font-bold">{quoteData.shortName}</h2>
+          <h2 className="text-xl font-bold">{currentQuoteData.shortName}</h2>
           <p className="ml-2 text-xs text-gray-500">{ticker}</p>
         </div>
         <div className="flex items-baseline">
