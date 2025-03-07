@@ -12,7 +12,10 @@ import type { Interval, Range } from "@/types/yahoo-finance";
  */
 export async function getQuoteData(ticker: string) {
   try {
-    const response = await fetch(`/api/py/stock/quote?ticker=${ticker}`);
+    const url = process.env.NODE_ENV === 'development'
+      ? `/api/py/stock/quote?ticker=${ticker}`
+      : `${process.env.API_BASE_URL}/api/py/stock/quote?ticker=${ticker}`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`获取股票数据失败: ${response.status}`);
     }

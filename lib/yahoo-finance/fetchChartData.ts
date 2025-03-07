@@ -25,10 +25,11 @@ export async function fetchChartData(
     // 获取当前请求的 host
     const headersList = headers()
     const host = headersList.get('host') || 'localhost:3000'
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
     
     // 构建完整的 URL
-    const url = `${protocol}://${host}/api/py/stock/chart?ticker=${encodedTicker}&interval=${interval}`
+    const url = process.env.NODE_ENV === 'development' 
+      ? `http://${host}/api/py/stock/chart?ticker=${encodedTicker}&interval=${interval}`
+      : `${process.env.API_BASE_URL}/api/py/stock/chart?ticker=${encodedTicker}&interval=${interval}`;
     
     // 调用 Python FastAPI 接口
     const response = await fetch(url)

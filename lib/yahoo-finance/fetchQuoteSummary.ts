@@ -14,7 +14,9 @@ export async function fetchQuoteSummary(ticker: string) {
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
     
     // 构建完整的 URL
-    const url = `${protocol}://${host}/api/py/stock/quoteSummary?ticker=${encodedTicker}`
+    const url = process.env.NODE_ENV === 'development' 
+      ? `http://${host}/api/py/stock/quoteSummary?ticker=${encodedTicker}`
+      : `${process.env.API_BASE_URL}/api/py/stock/quoteSummary?ticker=${encodedTicker}`;
     
     // 调用 Python FastAPI 接口
     const response = await fetch(url)
