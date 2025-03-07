@@ -189,7 +189,7 @@ export default async function StockChart({
         </div>
       )}
       {chart.quotes.length > 0 && (
-        <AreaClosedChart chartQuotes={ChartQuotes} range={range} />
+        <AreaClosedChart chartQuotes={ChartQuotes} />
       )}
     </div>
   )
