@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSearchParams, usePathname, useRouter } from "next/navigation"
-import { useCallback, useState } from "react"
+import { useCallback, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,6 +39,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
+import StockHoverCard from "@/components/chart/StockHoverCard"
+import useStockStore from "@/store/stockStore"
+import { Star } from "lucide-react"
 
 // 定义筛选器选项
 const screenerOptions = [
@@ -62,6 +65,11 @@ export function ScreenerTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  
+  // 从全局状态获取自选股相关函数
+  const addToFavorites = useStockStore(state => state.addToFavorites);
+  const removeFromFavorites = useStockStore(state => state.removeFromFavorites);
+  const isFavorite = useStockStore(state => state.isFavorite);
 
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -112,6 +120,18 @@ export function ScreenerTable<TData, TValue>({
     },
     [searchParams, pathname, replace]
   )
+
+  // 处理自选股添加/移除
+  const handleToggleFavorite = (stock: any) => {
+    if (isFavorite(stock.symbol)) {
+      removeFromFavorites(stock.symbol);
+    } else {
+      addToFavorites({
+        symbol: stock.symbol,
+        shortName: stock.shortName
+      });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -180,6 +200,10 @@ export function ScreenerTable<TData, TValue>({
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
+                  {/* 添加自选列 */}
+                  <TableHead className="w-10">
+                    <div className="text-center">自选</div>
+                  </TableHead>
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id}>
                       {header.isPlaceholder ? null : (
@@ -209,11 +233,36 @@ export function ScreenerTable<TData, TValue>({
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
                   >
+                    {/* 自选星标列 */}
+                    <TableCell className="w-10">
+                      <div className="text-center">
+                        <button 
+                          onClick={() => handleToggleFavorite(row.original as any)}
+                          className="focus:outline-none"
+                        >
+                          <Star 
+                            className={isFavorite((row.original as any).symbol) 
+                              ? "fill-yellow-400 text-yellow-400" 
+                              : "text-muted-foreground"}
+                            size={16} 
+                          />
+                        </button>
+                      </div>
+                    </TableCell>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
+                        {cell.column.id === 'symbol' ? (
+                          <StockHoverCard symbol={(row.original as any).symbol}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </StockHoverCard>
+                        ) : (
+                          flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )
                         )}
                       </TableCell>
                     ))}
@@ -222,7 +271,7 @@ export function ScreenerTable<TData, TValue>({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
+                    colSpan={columns.length + 1} // +1 for the favorite column
                     className="h-24 text-center"
                   >
                     暂无结果

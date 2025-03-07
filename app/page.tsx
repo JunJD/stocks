@@ -1,6 +1,9 @@
 import { DataTable } from "@/components/stocks/markets/data-table"
 import {
   Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
 } from "@/components/ui/card"
 import { DEFAULT_INTERVAL, DEFAULT_RANGE } from "@/lib/yahoo-finance/constants"
 import { Interval } from "@/types/yahoo-finance"
@@ -13,6 +16,11 @@ import {
 } from "@/lib/yahoo-finance/fetchChartData"
 import { fetchStockSearch } from "@/lib/yahoo-finance/fetchStockSearch"
 import { headers } from "next/headers"
+import type { Metadata } from "next"
+import { fetchQuote } from "@/lib/yahoo-finance/fetchQuote"
+import IndexTiles from "@/components/stocks/IndexTiles"
+import { FavoritesProvider } from "@/components/providers/favorites-provider"
+import { FavoritesList } from "@/components/stocks/favorites-list"
 
 function isMarketOpen() {
   const now = new Date()
@@ -47,22 +55,17 @@ function isMarketOpen() {
   }
 }
 
-// 中国A股指数
-const chinaTickers = [
+// 现在将从全局状态获取这些板块，而不是在这里硬编码
+// 这些作为默认值
+const DEFAULT_INDICES = [
   { symbol: "sh000016", shortName: "上证50" },
   { symbol: "sh000300", shortName: "沪深300" },
   { symbol: "sh000852", shortName: "中证1000" },
-  // { symbol: "CL=F", shortName: "原油" },
-  // { symbol: "GC=F", shortName: "黄金" },
-  // { symbol: "SI=F", shortName: "白银" },
-  // { symbol: "EURUSD=X", shortName: "欧元/美元" },
-  // { symbol: "^TNX", shortName: "10年期国债" },
-  // { symbol: "BTC-USD", shortName: "比特币" },
 ]
 
 // 使用中国指数作为默认显示的股票列表
-const tickersFutures = chinaTickers
-const tickerAfterOpen = chinaTickers
+const tickersFutures = DEFAULT_INDICES
+const tickerAfterOpen = DEFAULT_INDICES
 
 function getMarketSentiment(changePercentage: number | undefined) {
   if (!changePercentage) {
@@ -158,7 +161,7 @@ export default async function Home({
         : "bg-neutral-500/10"
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* <div className="w-full lg:w-1/2">
           <Card className="relative flex h-full min-h-[15rem] flex-col justify-between overflow-hidden">
@@ -202,6 +205,35 @@ export default async function Home({
             </CardContent>
           </Card>
         </div> */}
+      </div>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="w-full lg:w-1/2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">市场指数</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<div>加载中...</div>}>
+                <IndexTiles />
+              </Suspense>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="w-full lg:w-1/2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">自选股</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<div>加载中...</div>}>
+                <FavoritesProvider>
+                  <FavoritesList />
+                </FavoritesProvider>
+              </Suspense>
+            </CardContent>
+          </Card>
+        </div>
       </div>
       <div>
         <h2 className="py-4 text-xl font-medium">市场行情</h2>
