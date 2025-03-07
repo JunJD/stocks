@@ -42,7 +42,10 @@ export async function getQuoteData(ticker: string) {
  */
 export async function getChartData(ticker: string, range: Range, interval: Interval) {
   try {
-    const response = await fetch(`/api/py/stock/chart?ticker=${ticker}&interval=${interval}`);
+    const url = process.env.NODE_ENV === 'development'
+      ? `/api/py/stock/chart?ticker=${ticker}&interval=${interval}`
+      : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/py/stock/chart?ticker=${ticker}&interval=${interval}`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`获取图表数据失败: ${response.status}`);
     }
