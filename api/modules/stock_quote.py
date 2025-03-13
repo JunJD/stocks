@@ -1,9 +1,11 @@
 from typing import Dict
 from fastapi import APIRouter
 import akshare as ak
-from datetime import datetime
+from datetime import datetime, timedelta
 from .utils.logger import get_logger, log_akshare_call
 from .utils.stock_data_provider import stock_data_provider
+from .utils.stock_cache import stock_cache  # 导入缓存模块
+from .utils.stock_history_provider import stock_history_provider  # 导入历史数据提供者
 
 # 创建logger实例
 logger = get_logger(__name__)
@@ -30,6 +32,15 @@ async def stock_quote(ticker: str) -> Dict:
         # 移除前缀符号处理
         clean_ticker, is_index = stock_data_provider.standardize_ticker(ticker)
         logger.debug(f"处理后的股票代码: {clean_ticker}, 是否为指数: {is_index}")
+        
+        # 检查是否有有效缓存
+        prev_close = None
+        if stock_cache.has_valid_cache(ticker):
+            logger.info(f"发现股票 {ticker} 的有效缓存")
+            cache_data = stock_cache.get_cache(ticker)
+            if cache_data and 'prev_close' in cache_data:
+                prev_close = cache_data['prev_close']
+                logger.info(f"使用缓存的昨收价: {prev_close}")
         
         # Yahoo Finance 返回格式的基本结构
         yahoo_response = {
@@ -71,12 +82,60 @@ async def stock_quote(ticker: str) -> Dict:
         quotes = stock_data_provider.get_realtime_min_data(ticker, interval='1')
         
         if quotes and len(quotes) > 0:
-            # 获取最新一条数据和第一条数据
+            # 获取最新一条数据
             latest_quote = quotes[-1]
-            first_quote = quotes[0] if len(quotes) > 1 else latest_quote
             
-            # 计算涨跌幅
-            prev_close = first_quote.get("close", 0)
+            # 如果没有缓存的昨收价，则需要获取
+            if prev_close is None:
+                try:
+                    # 首先尝试从历史数据中获取昨日收盘价
+                    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+                    # 向前查找3天的数据，以应对节假日情况
+                    days_before = (datetime.now() - timedelta(days=5)).strftime("%Y%m%d")
+                    
+                    logger.info(f"尝试从历史数据中获取{ticker}的昨日收盘价")
+                    hist_data = stock_history_provider.get_stock_history(
+                        ticker, "daily", days_before, yesterday
+                    )
+                    
+                    if not hist_data.empty:
+                        # 获取最新一条历史数据的收盘价作为昨收价
+                        prev_close = hist_data.iloc[-1]['收盘']
+                        logger.info(f"从历史数据获取到昨收价: {prev_close}")
+                    else:
+                        logger.info(f"未从历史数据中找到{ticker}的昨收价，尝试实时行情API")
+                        # 如果历史数据中没有，则尝试从实时行情API获取
+                        with log_akshare_call():
+                            if is_index:
+                                # 对于指数，获取指数行情
+                                stock_info = ak.stock_zh_index_spot_em()
+                                stock_info = stock_info[stock_info['代码'] == clean_ticker]
+                            else:
+                                # 对于个股，获取A股行情
+                                stock_info = ak.stock_zh_a_spot_em()
+                                stock_info = stock_info[stock_info['代码'] == clean_ticker]
+                            
+                            if not stock_info.empty:
+                                prev_close = float(stock_info['昨收'].values[0])
+                                logger.info(f"从实时行情API获取到昨收价: {prev_close}")
+                            else:
+                                logger.warning(f"未找到 {ticker} 的昨收价信息")
+                                # 如果获取失败，使用当日第一条数据的收盘价作为备选
+                                first_quote = quotes[0] if len(quotes) > 1 else latest_quote
+                                prev_close = first_quote.get("close", 0)
+                    
+                    # 无论从哪里获取到昨收价，都更新缓存
+                    if prev_close is not None and prev_close > 0:
+                        cache_data = {'prev_close': prev_close, 'update_time': datetime.now().isoformat()}
+                        stock_cache.update_cache(ticker, cache_data)
+                        logger.info(f"已缓存股票 {ticker} 的昨收价: {prev_close}")
+                    
+                except Exception as e:
+                    logger.warning(f"获取{ticker}昨日收盘价失败: {str(e)}")
+                    # 如果获取失败，使用当日第一条数据的收盘价作为备选
+                    first_quote = quotes[0] if len(quotes) > 1 else latest_quote
+                    prev_close = first_quote.get("close", 0)
+            
             current_price = latest_quote.get("close", 0)
             
             if prev_close and prev_close > 0:

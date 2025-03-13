@@ -112,7 +112,7 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
         return <div className="text-right">N/A</div>
       }
 
-      const formattedChange = (changePercent * 100).toFixed(3)
+      const formattedChange = `${(changePercent * 100).toFixed(2)}%`
       const isPositive = changePercent > 0
       const isZero = changePercent === 0
 

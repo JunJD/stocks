@@ -99,7 +99,7 @@ export const columns: ColumnDef<Quote>[] = [
                 : "bg-green-300 text-green-800 dark:bg-green-950 dark:text-green-400"
             )}
           >
-            {changePercent.toFixed(3)}%
+            {(changePercent * 100).toFixed(3)}%
           </div>
         </div>
       )
