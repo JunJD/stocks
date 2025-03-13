@@ -1,0 +1,61 @@
+/* news.css */
+.news-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .news-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .news-filters {
+    display: flex;
+    align-items: center;
+  }
+  
+  .news-card {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .news-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  .news-time {
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .news-content {
+    color: #333;
+    line-height: 1.6;
+  }
+  
+  .news-pagination {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  /* 适配移动设备 */
+  @media (max-width: 768px) {
+    .news-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .news-filters {
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .news-filters > * {
+      margin-bottom: 8px;
+    }
+  }

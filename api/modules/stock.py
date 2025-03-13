@@ -4,6 +4,7 @@ from .stock_quote import router as quote_router
 from .stock_chart import router as chart_router
 from .stock_summary import router as summary_router
 from .stock_screener import router as screener_router
+from .stock_news import router as news_router
 
 # 创建主路由器
 router = APIRouter()
@@ -22,4 +23,7 @@ router.include_router(chart_router)
 router.include_router(summary_router)
 
 # 股票筛选器接口 (stock_screener_router)
-router.include_router(screener_router) 
+router.include_router(screener_router)
+
+# 股票快讯接口 (stock_news_router)
+router.include_router(news_router) 
