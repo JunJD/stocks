@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { fetchScreenerStocks } from "@/lib/yahoo-finance/fetchScreenerStocks"
 import { ScreenerTable } from "./components/data-table"
 import { columns } from "./components/columns"
+import { HeatMap } from "./components/heat-map"
 
 export const metadata: Metadata = {
   title: "股票筛选器 | AKShare股票数据",
@@ -16,6 +17,7 @@ export default async function ScreenerPage({
 }) {
   const screenerParam = searchParams.screener || "all_stocks"
   const countParam = searchParams.count || "100"
+  const showHeatMap = searchParams.view !== "table-only"
   
   // 定义筛选器选项及其中文标签
   const screenerOptions = [
@@ -43,11 +45,18 @@ export default async function ScreenerPage({
   return (
     <div className="container mx-auto py-6 mb-6">
       <div className="mb-6 space-y-1">
-        {/* <h1 className="text-3xl font-bold tracking-tight">股票筛选器</h1> */}
         <p className="text-muted-foreground">
           当前筛选: <span className="font-medium">{currentScreenerLabel}</span>
         </p>
       </div>
+      
+      {/* 热力图区域 */}
+      {showHeatMap && (
+        <div className="mb-8">
+          <HeatMap />
+        </div>
+      )}
+      
       <div className="space-y-4">
         <ScreenerTable data={stockData} columns={columns} />
       </div>
