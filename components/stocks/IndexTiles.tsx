@@ -34,7 +34,7 @@ export default function IndexTiles() {
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="flex flex-col p-4">
             <Skeleton className="h-4 w-24 mb-2" />
             <Skeleton className="h-6 w-16 mb-1" />

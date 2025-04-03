@@ -14,10 +14,12 @@ router = APIRouter(tags=["stock_quote"])
 
 # 定义中国主要指数代码映射
 CHINA_INDEX_MAP = {
+    "sh000001": "上证指数",
     "sh000016": "上证50", 
     "sh000300": "沪深300",
     "sh000852": "中证1000",
-    
+    "sz399001": "深证成指",
+    "sz399006": "创业板指",
 }
 
 @router.get("/stock/quote")

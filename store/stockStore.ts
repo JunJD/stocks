@@ -117,6 +117,9 @@ const DEFAULT_MARKET_INDICES = [
   { symbol: "sh000016", shortName: "上证50" },
   { symbol: "sh000300", shortName: "沪深300" },
   { symbol: "sh000852", shortName: "中证1000" },
+  { symbol: "sh000001", shortName: "上证指数" },
+  { symbol: "sz399001", shortName: "深证成指" },
+  { symbol: "sz399006", shortName: "创业板指" },
 ];
 
 // 创建 Zustand store

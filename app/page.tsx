@@ -61,6 +61,9 @@ const DEFAULT_INDICES = [
   { symbol: "sh000016", shortName: "上证50" },
   { symbol: "sh000300", shortName: "沪深300" },
   { symbol: "sh000852", shortName: "中证1000" },
+  { symbol: "sh000001", shortName: "上证指数" },
+  { symbol: "sz399001", shortName: "深证成指" },
+  { symbol: "sz399006", shortName: "创业板指" },
 ]
 
 // 使用中国指数作为默认显示的股票列表
@@ -208,7 +211,7 @@ export default async function Home({
         </div> */}
       </div>
       <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="w-full lg:w-1/2">
+        <div className="w-full">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">市场指数</CardTitle>
@@ -221,7 +224,7 @@ export default async function Home({
           </Card>
         </div>
         
-        <div className="w-full lg:w-1/2">
+        {/* <div className="w-full lg:w-1/2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">自选股</CardTitle>
@@ -234,7 +237,7 @@ export default async function Home({
               </Suspense>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
       <div>
         <h2 className="py-4 text-xl font-medium">市场行情</h2>

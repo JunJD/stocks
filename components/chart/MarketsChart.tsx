@@ -2,6 +2,7 @@ import { fetchChartData } from "@/lib/yahoo-finance/fetchChartData"
 import { fetchQuote } from "@/lib/yahoo-finance/fetchQuote"
 import type { Interval, Range } from "@/types/yahoo-finance"
 import ClientMarketsChart from "./ClientMarketsChart"
+import { unstable_noStore as noStore } from 'next/cache';
 
 // 服务器组件 - 负责获取初始数据
 export default async function MarketsChart({
@@ -11,6 +12,9 @@ export default async function MarketsChart({
   ticker: string
   interval: Interval
 }) {
+  // 禁用缓存以防止水合错误
+  noStore();
+  
   console.log(`加载 MarketsChart: ticker=${ticker}, interval=${interval}`);
   
   try {
