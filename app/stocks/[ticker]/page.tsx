@@ -1,6 +1,5 @@
 import StockChart from "@/components/chart/StockChart"
 import CompanySummaryCard from "@/app/stocks/[ticker]/components/CompanySummaryCard"
-import FinanceSummary from "@/app/stocks/[ticker]/components/FinanceSummary"
 import News from "@/app/stocks/[ticker]/components/News"
 import { Card, CardContent } from "@/components/ui/card"
 import { DEFAULT_INTERVAL, DEFAULT_RANGE } from "@/lib/yahoo-finance/constants"
@@ -62,34 +61,8 @@ export default async function StocksPage({ params, searchParams }: Props) {
               </div>
             }
           >
+            {/* @ts-expect-error 异步服务器组件 */}
             <StockChart ticker={ticker} range={range} interval={interval} />
-          </Suspense>
-          <Suspense
-            fallback={
-              <div className="flex h-[10rem] items-center justify-center text-muted-foreground ">
-                Loading...
-              </div>
-            }
-          >
-            <FinanceSummary ticker={ticker} />
-          </Suspense>
-          <Suspense
-            fallback={
-              <div className="flex h-[10rem] items-center justify-center text-muted-foreground ">
-                Loading...
-              </div>
-            }
-          >
-            <CompanySummaryCard ticker={ticker} />
-          </Suspense>
-          <Suspense
-            fallback={
-              <div className="flex h-[20rem] items-center justify-center text-muted-foreground ">
-                Loading...
-              </div>
-            }
-          >
-            <News ticker={ticker} />
           </Suspense>
         </CardContent>
       </Card>
