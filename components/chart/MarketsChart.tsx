@@ -14,19 +14,14 @@ export default async function MarketsChart({
 }) {
   // 禁用缓存以防止水合错误
   noStore();
-  
-  console.log(`加载 MarketsChart: ticker=${ticker}, interval=${interval}`);
-  
+
   try {
     // 并行获取图表数据和报价数据
     const [chartData, quoteData] = await Promise.all([
       fetchChartData(ticker, interval),
       fetchQuote(ticker),
     ]);
-    
-    console.log('Chart data received:', chartData?.quotes?.length || 0, 'data points');
-    console.log('Quote data received:', quoteData?.shortName || 'No name');
-    
+
     // 检查是否有图表数据
     if (!chartData || !chartData.quotes || chartData.quotes.length === 0) {
       return (
@@ -46,7 +41,6 @@ export default async function MarketsChart({
       />
     );
   } catch (error) {
-    console.error("Error loading market chart:", error);
     return (
       <div className="flex h-full w-full flex-col items-center justify-center">
         <span className="text-sm text-gray-500">图表加载失败</span>

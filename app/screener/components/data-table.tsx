@@ -1,18 +1,6 @@
 "use client"
 
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
-import {
   Table,
   TableBody,
   TableCell,
@@ -28,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSearchParams, usePathname, useRouter } from "next/navigation"
-import { useCallback, useState, useRef } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -42,6 +30,7 @@ import {
 import StockHoverCard from "@/components/chart/StockHoverCard"
 import useStockStore from "@/store/stockStore"
 import { Star } from "lucide-react"
+import { useFavorites } from "@/components/providers/favorites-provider"
 
 // 定义筛选器选项
 const screenerOptions = [
@@ -53,49 +42,52 @@ const screenerOptions = [
   { id: "growth_technology_stocks", label: "科技成长股" },
 ];
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+interface DataTableProps {
+  columns: any[]
+  data: any[]
 }
 
-export function ScreenerTable<TData, TValue>({
+export function ScreenerTable({
   columns,
   data,
-}: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+}: DataTableProps) {
+  const { favorites, removeFromFavorites, addToFavorites } = useFavorites()
+  const [searchText, setSearchText] = useState("")
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
   
-  // 从全局状态获取自选股相关函数
-  const addToFavorites = useStockStore(state => state.addToFavorites);
-  const removeFromFavorites = useStockStore(state => state.removeFromFavorites);
-  const isFavorite = useStockStore(state => state.isFavorite);
+  // 初始化列可见性状态
+  useEffect(() => {
+    const initialVisibility: Record<string, boolean> = {};
+    columns.forEach(col => {
+      initialVisibility[col.accessorKey] = true;
+    });
+    setVisibleColumns(initialVisibility);
+  }, [columns]);
+
+  const isFavorite = useCallback((symbol: string) => {
+    return favorites.some(favorite => favorite.symbol === symbol)
+  }, [favorites])
 
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { replace } = useRouter()
 
-  const table = useReactTable({
-    data,
-    columns,
-    initialState: {
-      pagination: {
-        pageSize: 15,
-      },
-    },
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    getFilteredRowModel: getFilteredRowModel(),
-  })
+  // 筛选数据
+  const filteredData = data.filter(item => {
+    if (!searchText) return true;
+    const lowerCaseSearch = searchText.toLowerCase();
+    return (
+      (item.symbol && item.symbol.toLowerCase().includes(lowerCaseSearch)) ||
+      (item.shortName && item.shortName.toLowerCase().includes(lowerCaseSearch))
+    );
+  });
+
+  // 分页
+  const totalPages = Math.ceil(filteredData.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
 
   const getScreenerParam = useCallback(() => {
     return searchParams.get("screener") || "most_actives";
@@ -133,23 +125,27 @@ export function ScreenerTable<TData, TValue>({
     }
   };
 
+  // 切换列可见性
+  const toggleColumnVisibility = (column: string, isVisible: boolean) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [column]: isVisible
+    }));
+  };
+
+  // 获取可见列
+  const getVisibleColumns = () => {
+    return columns.filter(col => visibleColumns[col.accessorKey]);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex flex-1 items-center space-x-2">
           <Input
             placeholder="搜索股票代码或公司名称..."
-            value={(table.getColumn("shortName")?.getFilterValue() as string) ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-              // 同时筛选股票代码和公司名称
-              table.getColumn("shortName")?.setFilterValue(value);
-              
-              // 如果有symbol列，也对其进行筛选
-              if (table.getColumn("symbol")) {
-                table.getColumn("symbol")?.setFilterValue(value);
-              }
-            }}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             className="h-8 w-[150px] lg:w-[250px]"
           />
           <DropdownMenu>
@@ -174,23 +170,18 @@ export function ScreenerTable<TData, TValue>({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {typeof column.columnDef.meta === 'string' ? column.columnDef.meta : column.id}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
+            {columns
+              .filter(column => column.accessorKey !== "symbol" || !column.enableHiding)
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.accessorKey}
+                  className="capitalize"
+                  checked={visibleColumns[column.accessorKey]}
+                  onCheckedChange={(value) => toggleColumnVisibility(column.accessorKey, !!value)}
+                >
+                  {typeof column.meta === 'string' ? column.meta : column.accessorKey}
+                </DropdownMenuCheckboxItem>
+              ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -198,50 +189,35 @@ export function ScreenerTable<TData, TValue>({
         <CardContent className="pt-6">
           <Table>
             <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {/* 添加自选列 */}
-                  <TableHead className="w-10">
-                    <div className="text-center">自选</div>
+              <TableRow>
+                {/* 自选列 */}
+                <TableHead className="w-10">
+                  <div className="text-center">自选</div>
+                </TableHead>
+                
+                {/* 动态列 */}
+                {getVisibleColumns().map((column, index) => (
+                  <TableHead key={index}>
+                    {typeof column.header === 'function' 
+                      ? column.header() 
+                      : column.header}
                   </TableHead>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={
-                            header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : ""
-                          }
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </div>
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
+                ))}
+              </TableRow>
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
+              {paginatedData.length > 0 ? (
+                paginatedData.map((row, rowIndex) => (
+                  <TableRow key={rowIndex}>
                     {/* 自选星标列 */}
                     <TableCell className="w-10">
                       <div className="text-center">
                         <button 
-                          onClick={() => handleToggleFavorite(row.original as any)}
+                          onClick={() => handleToggleFavorite(row)}
                           className="focus:outline-none"
                         >
                           <Star 
-                            className={isFavorite((row.original as any).symbol) 
+                            className={isFavorite(row.symbol) 
                               ? "fill-yellow-400 text-yellow-400" 
                               : "text-muted-foreground"}
                             size={16} 
@@ -249,20 +225,20 @@ export function ScreenerTable<TData, TValue>({
                         </button>
                       </div>
                     </TableCell>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {cell.column.id === 'symbol' ? (
-                          <StockHoverCard symbol={(row.original as any).symbol}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
+                    
+                    {/* 数据列 */}
+                    {getVisibleColumns().map((column, colIndex) => (
+                      <TableCell key={colIndex}>
+                        {column.accessorKey === 'symbol' ? (
+                          <StockHoverCard symbol={row.symbol}>
+                            {column.cell 
+                              ? column.cell({ row }) 
+                              : row[column.accessorKey]}
                           </StockHoverCard>
                         ) : (
-                          flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )
+                          column.cell 
+                            ? column.cell({ row }) 
+                            : row[column.accessorKey]
                         )}
                       </TableCell>
                     ))}
@@ -271,7 +247,7 @@ export function ScreenerTable<TData, TValue>({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length + 1} // +1 for the favorite column
+                    colSpan={getVisibleColumns().length + 1} // +1 for the favorite column
                     className="h-24 text-center"
                   >
                     暂无结果
@@ -286,40 +262,40 @@ export function ScreenerTable<TData, TValue>({
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">每页行数</p>
           <Select
-            value={`${table.getState().pagination.pageSize}`}
+            value={`${pageSize}`}
             onValueChange={(value) => {
-              table.setPageSize(Number(value))
+              setPageSize(Number(value));
+              setCurrentPage(1); // 重置到第一页
             }}
           >
             <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue placeholder={pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
-              {[15, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
+              {[15, 20, 30, 40, 50].map((size) => (
+                <SelectItem key={size} value={`${size}`}>
+                  {size}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          第 {table.getState().pagination.pageIndex + 1} 页，共{" "}
-          {table.getPageCount()} 页
+          第 {currentPage} 页，共 {totalPages || 1} 页
         </div>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          disabled={currentPage <= 1}
         >
           上一页
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          disabled={currentPage >= totalPages}
         >
           下一页
         </Button>

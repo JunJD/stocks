@@ -4,6 +4,10 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link"
+import { Responsive as ResponsiveGridLayout } from "react-grid-layout"
+import "react-grid-layout/css/styles.css"
+import "react-resizable/css/styles.css"
 
 interface HeatMapStock {
   symbol: string;
@@ -13,6 +17,7 @@ interface HeatMapStock {
   changePct: number;
   marketCap: number;
   sector?: string;
+  sectorName?: string;
 }
 
 interface SectorData {
@@ -30,6 +35,21 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
   const [heatMapData, setHeatMapData] = useState<SectorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [windowWidth, setWindowWidth] = useState(1200);
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    function handleResize() {
+      setWindowWidth(window.innerWidth);
+    }
+    
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+      window.addEventListener('resize', handleResize);
+      
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchHeatMapData() {
@@ -63,14 +83,143 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
     }
   };
 
-  // 计算方块大小 (基于市值)
-  const getBlockSize = (marketCap: number, totalMarketCap: number) => {
-    const minSize = 60;
-    const maxSize = 180;
-    const ratio = marketCap / totalMarketCap;
-    const size = Math.max(minSize, Math.min(maxSize, ratio * 1000));
-    return size;
+  // 获取股票数据，已划分为不同的块区域
+  const getStockBlocks = (): { layout: any[], blocks: any[] } => {
+    if (heatMapData.length === 0) {
+      return { layout: [], blocks: [] };
+    }
+
+    const allStocks = heatMapData.flatMap(sector => 
+      sector.stocks.map(stock => ({
+        ...stock,
+        sectorName: sector.name
+      }))
+    );
+
+    // 根据市值对股票进行排序，让大市值股票获得更大的区块
+    const sortedStocks = [...allStocks].sort((a, b) => b.marketCap - a.marketCap);
+    
+    // 为布局创建不同大小的块
+    const layout = [];
+    const blocks = [];
+    
+    // 如果有数据，第一个是主要指数（大区块）
+    if (sortedStocks.length > 0) {
+      const mainStock = sortedStocks[0];
+      
+      // 主要指数的布局和区块内容
+      layout.push({ i: 'main', x: 0, y: 0, w: 6, h: 12, static: true });
+      blocks.push(renderStockBlock('main', mainStock, true));
+      
+      // 右侧第一行 - 3个小区块
+      const row1Stocks = sortedStocks.slice(1, 4);
+      row1Stocks.forEach((stock, index) => {
+        const id = `b${index + 1}`;
+        layout.push({ i: id, x: 6 + index*2, y: 0, w: 2, h: 4, static: true });
+        blocks.push(renderStockBlock(id, stock));
+      });
+      
+      // 右侧第二行 - 1个中区块和1个小区块
+      if (sortedStocks.length > 4) {
+        // 中区块
+        layout.push({ i: 'c1', x: 6, y: 4, w: 4, h: 4, static: true });
+        blocks.push(renderStockBlock('c1', sortedStocks[4], false, true));
+        
+        // 小区块
+        if (sortedStocks.length > 5) {
+          layout.push({ i: 'c2', x: 10, y: 4, w: 2, h: 4, static: true });
+          blocks.push(renderStockBlock('c2', sortedStocks[5]));
+        }
+      }
+      
+      // 右侧第三行 - 3个小区块
+      const row3Stocks = sortedStocks.slice(6, 9);
+      row3Stocks.forEach((stock, index) => {
+        const id = `d${index + 1}`;
+        layout.push({ i: id, x: 6 + index*2, y: 8, w: 2, h: 4, static: true });
+        blocks.push(renderStockBlock(id, stock));
+      });
+    }
+    
+    return { layout, blocks };
   };
+
+  // 渲染单个股票区块 
+  const renderStockBlock = (id: string, stock: HeatMapStock, isMain = false, isMedium = false) => {
+    if (!stock) {
+      return <div key={id} className="flex items-center justify-center rounded-lg border bg-card">
+        <p className="text-muted-foreground">暂无数据</p>
+      </div>;
+    }
+    
+    return (
+      <div 
+        key={id} 
+        className="overflow-hidden rounded-lg border transition-transform hover:scale-[1.02] cursor-pointer"
+        style={{ 
+          backgroundColor: getColorByChange(stock.changePct),
+          height: '100%'
+        }}
+        onClick={() => window.location.href = `/stocks/${stock.symbol}`}
+      >
+        <div className={`flex flex-col ${isMain ? 'p-6' : isMedium ? 'p-4' : 'p-2'} h-full`}>
+          <div>
+            <h3 className={`${isMain ? 'text-2xl' : isMedium ? 'text-lg' : 'text-sm'} font-bold truncate`}>
+              {stock.name}
+            </h3>
+            <p className={`${isMain ? 'text-lg' : 'text-xs'} opacity-90 truncate`}>
+              {stock.symbol}
+            </p>
+            {stock.sectorName && !isMain && (
+              <p className="text-xs opacity-75 truncate">{stock.sectorName}</p>
+            )}
+          </div>
+          
+          <div className="mt-auto">
+            {isMain && (
+              <p className="text-3xl font-bold mb-1">{stock.price.toFixed(2)}</p>
+            )}
+            <div className={`flex ${isMain ? 'flex-row gap-2' : 'flex-col'}`}>
+              {isMain && (
+                <span className={`${isMain ? 'text-xl' : 'text-sm'} font-semibold ${stock.changePct >= 0 ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
+                  {stock.changePct >= 0 ? '+' : ''}{stock.change.toFixed(2)}
+                </span>
+              )}
+              <span className={`${isMain ? 'text-xl' : 'text-sm'} font-semibold ${stock.changePct >= 0 ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
+                {isMain && '('}{stock.changePct >= 0 ? '+' : ''}{stock.changePct.toFixed(2)}%{isMain && ')'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 处理加载中状态的布局
+  const renderLoadingLayout = () => {
+    const layout = [
+      { i: 'main', x: 0, y: 0, w: 6, h: 12, static: true },
+      { i: 'b1', x: 6, y: 0, w: 2, h: 4, static: true },
+      { i: 'b2', x: 8, y: 0, w: 2, h: 4, static: true },
+      { i: 'b3', x: 10, y: 0, w: 2, h: 4, static: true },
+      { i: 'c1', x: 6, y: 4, w: 4, h: 4, static: true },
+      { i: 'c2', x: 10, y: 4, w: 2, h: 4, static: true },
+      { i: 'd1', x: 6, y: 8, w: 2, h: 4, static: true },
+      { i: 'd2', x: 8, y: 8, w: 2, h: 4, static: true },
+      { i: 'd3', x: 10, y: 8, w: 2, h: 4, static: true }
+    ];
+
+    const blocks = layout.map(item => (
+      <div key={item.i} className="rounded-lg">
+        <Skeleton className="h-full w-full rounded-md" />
+      </div>
+    ));
+
+    return { layout, blocks };
+  };
+
+  // 获取当前的布局和区块
+  const { layout, blocks } = loading ? renderLoadingLayout() : getStockBlocks();
 
   return (
     <Card>
@@ -85,53 +234,22 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
         </Tabs>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-            {Array(15).fill(0).map((_, i) => (
-              <Skeleton key={i} className="h-36 w-full rounded-md" />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2 justify-center">
-            {heatMapData.map((sector) => (
-              <div key={sector.name} className="flex flex-col items-center mb-4">
-                {activeTab !== "all" && (
-                  <div className="text-sm font-medium mb-2">{sector.name}</div>
-                )}
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {sector.stocks
-                    .filter(stock => !industryFilter || stock.sector === industryFilter)
-                    .map((stock) => (
-                      <div
-                        key={stock.symbol}
-                        style={{
-                          width: `${getBlockSize(stock.marketCap, sector.totalMarketCap)}px`,
-                          height: `${getBlockSize(stock.marketCap, sector.totalMarketCap)}px`,
-                          backgroundColor: getColorByChange(stock.changePct),
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          padding: "4px",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          transition: "transform 0.2s",
-                        }}
-                        className="text-center hover:transform hover:scale-105"
-                        title={`${stock.name} (${stock.symbol}): ${stock.changePct.toFixed(2)}%`}
-                        onClick={() => window.location.href = `/stocks/${stock.symbol}`}
-                      >
-                        <div className="text-xs font-bold truncate" style={{maxWidth: "100%"}}>{stock.name}</div>
-                        <div className={`text-xs ${stock.changePct >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                          {stock.changePct.toFixed(2)}%
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="mb-8 overflow-hidden">
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: layout }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 12, sm: 12, xs: 4, xxs: 2 }}
+            rowHeight={30}
+            width={windowWidth > 1200 ? 1200 : windowWidth - 40}
+            margin={[10, 10]}
+            isDraggable={false}
+            isResizable={false}
+            containerPadding={[0, 0]}
+          >
+            {blocks}
+          </ResponsiveGridLayout>
+        </div>
       </CardContent>
     </Card>
   );

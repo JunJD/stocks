@@ -1,6 +1,5 @@
 "use client"
 
-import { CellContext, ColumnDef } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 
@@ -24,13 +23,13 @@ export interface ScreenerQuote {
 /**
  * 筛选器表格列定义
  */
-export const columns: ColumnDef<ScreenerQuote>[] = [
+export const columns = [
   {
     accessorKey: "symbol",
     meta: "代码",
     header: "代码",
-    cell: ({ row }) => {
-      const symbol = row.getValue("symbol") as string
+    cell: (props: any) => {
+      const symbol = props.row.symbol
 
       if (!symbol) {
         return <div>N/A</div>
@@ -56,9 +55,8 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "regularMarketPrice",
     meta: "价格",
     header: () => <div className="text-right">价格</div>,
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const price = row.getValue("regularMarketPrice") as number
+    cell: (props: any) => {
+      const price = props.row.regularMarketPrice
       if (price === undefined || price === null) {
         return <div className="text-right">N/A</div>
       }
@@ -69,9 +67,8 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "regularMarketChange",
     meta: "涨跌额",
     header: () => <div className="text-right">涨跌额</div>,
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const change = row.getValue("regularMarketChange") as number
+    cell: (props: any) => {
+      const change = props.row.regularMarketChange
       if (change === undefined || change === null) {
         return <div className="text-right">N/A</div>
       }
@@ -102,11 +99,8 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "regularMarketChangePercent",
     meta: "涨跌幅",
     header: () => <div className="text-right">涨跌幅</div>,
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const changePercent = row.getValue(
-        "regularMarketChangePercent"
-      ) as number
+    cell: (props: any) => {
+      const changePercent = props.row.regularMarketChangePercent
 
       if (changePercent === undefined || changePercent === null) {
         return <div className="text-right">N/A</div>
@@ -138,9 +132,8 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "regularMarketVolume",
     meta: "成交量",
     header: () => <div className="text-right">成交量</div>,
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const volume = row.getValue("regularMarketVolume") as number
+    cell: (props: any) => {
+      const volume = props.row.regularMarketVolume
       if (volume === undefined || volume === null) {
         return <div className="text-right">N/A</div>
       }
@@ -165,9 +158,8 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "averageDailyVolume3Month",
     meta: "平均成交量",
     header: () => <div className="text-right">平均成交量</div>,
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const volume = row.getValue("averageDailyVolume3Month") as number
+    cell: (props: any) => {
+      const volume = props.row.averageDailyVolume3Month
       if (volume === undefined || volume === null) {
         return <div className="text-right">N/A</div>
       }
@@ -192,9 +184,8 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "marketCap",
     meta: "市值",
     header: () => <div className="text-right">市值</div>,
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const marketCap = row.getValue("marketCap") as number
+    cell: (props: any) => {
+      const marketCap = props.row.marketCap
       if (marketCap === undefined || marketCap === null) {
         return <div className="text-right">N/A</div>
       }
@@ -219,12 +210,9 @@ export const columns: ColumnDef<ScreenerQuote>[] = [
     accessorKey: "P/E",
     meta: "市盈率",
     sortUndefined: -1,
-    header: ({ column }) => {
-      return <div className="text-right">市盈率</div>
-    },
-    cell: (props: CellContext<ScreenerQuote, unknown>) => {
-      const { row } = props
-      const pe = row.original.trailingPE;
+    header: () => <div className="text-right">市盈率</div>,
+    cell: (props: any) => {
+      const pe = props.row.trailingPE;
 
       if (pe === undefined || pe === null || pe <= 0) {
         return <div className="text-right">N/A</div>

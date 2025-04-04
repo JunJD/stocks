@@ -145,25 +145,6 @@ export default async function Home({
     ...result,
     shortName: result.shortName || tickers[index].shortName,
   }))
-
-  const marketSentiment = getMarketSentiment(
-    resultsWithTitles[0].regularMarketChangePercent
-  )
-
-  const sentimentColor =
-    marketSentiment === "bullish"
-      ? "text-green-500"
-      : marketSentiment === "bearish"
-        ? "text-red-500"
-        : "text-neutral-500"
-
-  const sentimentBackground =
-    marketSentiment === "bullish"
-      ? "bg-green-500/10"
-      : marketSentiment === "bearish"
-        ? "bg-red-300/50 dark:bg-red-950/50"
-        : "bg-neutral-500/10"
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row">
@@ -224,46 +205,7 @@ export default async function Home({
           </Card>
         </div>
         
-        {/* <div className="w-full lg:w-1/2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">自选股</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<div>加载中...</div>}>
-                <FavoritesProvider>
-                  <FavoritesList />
-                </FavoritesProvider>
-              </Suspense>
-            </CardContent>
-          </Card>
-        </div> */}
-      </div>
-      <div>
-        <h2 className="py-4 text-xl font-medium">市场行情</h2>
-        <Card className="flex flex-col gap-4 p-6 lg:flex-row">
-          <div className="w-full lg:w-1/2">
-            <Suspense fallback={<div className="py-2">加载市场数据中...</div>}>
-              {resultsWithTitles.length > 0 ? (
-                <DataTable columns={columns} data={resultsWithTitles.filter(quote => 
-                  // 过滤出有效的报价数据
-                  quote && quote.regularMarketPrice !== undefined && 
-                  !isNaN(quote.regularMarketPrice) && 
-                  quote.regularMarketPrice > 0
-                )} />
-              ) : (
-                <div className="flex h-24 w-full items-center justify-center text-sm text-gray-500">
-                  市场数据暂时不可用，请稍后再试
-                </div>
-              )}
-            </Suspense>
-          </div>
-          <div className="w-full lg:w-1/2">
-            <Suspense fallback={<div>加载中...</div>}>
-              <MarketsChart ticker={ticker} interval={interval} />
-            </Suspense>
-          </div>
-        </Card>
+       
       </div>
     </div>
   )

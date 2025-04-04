@@ -16,6 +16,14 @@ export default function Footer() {
             <span className="text-xs mt-1">市场</span>
           </Link>
 
+          <Link
+            href="/optional"
+            className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <SearchIcon className="h-5 w-5" />
+            <span className="text-xs mt-1">自选</span>
+          </Link>
+
           {/* 热力图 */}
           <Link
             href="/screener"
@@ -33,13 +41,6 @@ export default function Footer() {
             <span className="text-xs mt-1">快讯</span>
           </Link>
           
-          <Link
-            href="/search"
-            className="flex flex-col items-center p-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <SearchIcon className="h-5 w-5" />
-            <span className="text-xs mt-1">搜索</span>
-          </Link>
         </div>
       </div>
     </footer>

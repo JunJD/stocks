@@ -1,12 +1,21 @@
 'use client'
 
+import React from 'react'
 import { useFavorites } from '@/components/providers/favorites-provider'
 import useStockStore from '@/store/stockStore'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import Link from 'next/link'
-import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { cn } from '@/lib/utils'
 
 export function FavoritesList() {
   const { favorites, removeFromFavorites } = useFavorites()
@@ -30,74 +39,93 @@ export function FavoritesList() {
   }
   
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {favorites.map(favorite => {
-        const quote = quoteData[favorite.symbol]
-        
-        // 如果还没有获取到数据，显示加载状态
-        if (!quote) {
-          return (
-            <Card key={favorite.symbol} className="flex flex-col p-4 relative">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-sm font-medium">{favorite.shortName}</div>
-                  <div className="text-xs text-muted-foreground">{favorite.symbol}</div>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 absolute top-2 right-2"
-                  onClick={() => removeFromFavorites(favorite.symbol)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-              <div className="mt-2">
-                <Skeleton className="h-6 w-16 mb-1" />
-                <Skeleton className="h-3 w-12" />
-              </div>
-            </Card>
-          )
-        }
-        
-        const price = quote.regularMarketPrice
-        const change = quote.regularMarketChange
-        const changePercent = quote.regularMarketChangePercent
-        
-        // 确定颜色
-        const color = changePercent > 0 
-          ? "text-green-600 dark:text-green-400" 
-          : changePercent < 0 
-            ? "text-red-600 dark:text-red-400" 
-            : "text-slate-600 dark:text-slate-400"
-        
-        return (
-          <Card key={favorite.symbol} className="flex flex-col p-4 relative hover:bg-muted/50 transition-colors">
-            <div className="flex justify-between items-start">
-              <Link href={`/stocks/${favorite.symbol}`} className="flex-1 hover:underline">
-                <div className="text-sm font-medium">{favorite.shortName}</div>
-                <div className="text-xs text-muted-foreground">{favorite.symbol}</div>
-              </Link>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 absolute top-2 right-2"
-                onClick={() => removeFromFavorites(favorite.symbol)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="mt-2">
-              <div className="text-lg font-semibold">
-                {price.toFixed(2)}
-              </div>
-              <div className={`text-xs ${color}`}>
-                {change > 0 ? '+' : ''}{change.toFixed(2)} ({changePercent > 0 ? '+' : ''}{(changePercent * 100).toFixed(2)}%)
-              </div>
-            </div>
-          </Card>
-        )
-      })}
-    </div>
+    <Card className="h-full">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>名称</TableHead>
+              <TableHead className="text-right">价格</TableHead>
+              <TableHead className="text-right">涨跌额</TableHead>
+              <TableHead className="text-right">涨跌幅</TableHead>
+              <TableHead className="text-right"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {favorites.map((favorite) => {
+              const quote = quoteData[favorite.symbol] || {};
+              const { 
+                regularMarketPrice, 
+                regularMarketChange, 
+                regularMarketChangePercent 
+              } = quote;
+              
+              return (
+                <TableRow key={favorite.symbol}>
+                  <TableCell>
+                    <Link
+                      prefetch={false}
+                      href={{
+                        pathname: "/optional",
+                        query: { ticker: favorite.symbol },
+                      }}
+                      className="font-medium"
+                    >
+                      {favorite.shortName || favorite.symbol || "Unknown"}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {regularMarketPrice !== undefined ? regularMarketPrice.toFixed(2) : "--"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {regularMarketChange !== undefined ? (
+                      <span 
+                        className={
+                          regularMarketChange > 0 
+                            ? "text-green-600 dark:text-green-400" 
+                            : regularMarketChange < 0 
+                              ? "text-red-600 dark:text-red-400" 
+                              : ""
+                        }
+                      >
+                        {regularMarketChange > 0 ? "+" : ""}
+                        {regularMarketChange.toFixed(2)}
+                      </span>
+                    ) : "--"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {regularMarketChangePercent !== undefined ? (
+                      <div className="flex justify-end">
+                        <div
+                          className={cn(
+                            "w-[4rem] min-w-fit rounded-md px-2 py-0.5 text-right",
+                            regularMarketChangePercent < 0
+                              ? "bg-red-300 text-red-800 dark:bg-red-950 dark:text-red-500"
+                              : "bg-green-300 text-green-800 dark:bg-green-950 dark:text-green-400"
+                          )}
+                        >
+                          {regularMarketChangePercent > 0 ? "+" : ""}
+                          {(regularMarketChangePercent * 100).toFixed(2)}%
+                        </div>
+                      </div>
+                    ) : "--"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => removeFromFavorites(favorite.symbol)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   )
 } 

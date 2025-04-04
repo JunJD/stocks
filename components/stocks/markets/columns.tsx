@@ -1,6 +1,5 @@
 "use client"
 
-import { ColumnDef } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 
@@ -14,20 +13,19 @@ export interface Quote {
   [key: string]: any
 }
 
-export const columns: ColumnDef<Quote>[] = [
+export const columns = [
   {
     accessorKey: "shortName",
     header: "Title",
-    cell: (props) => {
-      const { row } = props
-      const title = row.getValue("shortName") as string
-      const symbol = row.original.symbol
+    cell: (props: any) => {
+      const title = props.row.shortName 
+      const symbol = props.row.symbol
 
       return (
         <Link
           prefetch={false}
           href={{
-            pathname: "/",
+            pathname: "/optional",
             query: { ticker: symbol },
           }}
           className="font-medium"
@@ -40,9 +38,8 @@ export const columns: ColumnDef<Quote>[] = [
   {
     accessorKey: "regularMarketPrice",
     header: () => <div className="text-right">Price</div>,
-    cell: (props) => {
-      const { row } = props
-      const price = row.getValue("regularMarketPrice") as number
+    cell: (props: any) => {
+      const price = props.row.regularMarketPrice
       // 检查价格是否为有效数字
       const isValidPrice = price !== undefined && price !== null && !isNaN(price)
       return <div className="text-right">{isValidPrice ? price.toFixed(3) : "暂无"}</div>
@@ -51,9 +48,8 @@ export const columns: ColumnDef<Quote>[] = [
   {
     accessorKey: "regularMarketChange",
     header: () => <div className="text-right">$ Change</div>,
-    cell: (props) => {
-      const { row } = props
-      const change = row.getValue("regularMarketChange") as number
+    cell: (props: any) => {
+      const change = props.row.regularMarketChange
       // 检查变化值是否为有效数字
       const isValidChange = change !== undefined && change !== null && !isNaN(change)
       
@@ -72,9 +68,8 @@ export const columns: ColumnDef<Quote>[] = [
   {
     accessorKey: "regularMarketChangePercent",
     header: () => <div className="text-right">% Change</div>,
-    cell: (props) => {
-      const { row } = props
-      const changePercent = row.getValue("regularMarketChangePercent") as number
+    cell: (props: any) => {
+      const changePercent = props.row.regularMarketChangePercent
       // 检查百分比变化是否为有效数字
       const isValidPercent = changePercent !== undefined && changePercent !== null && !isNaN(changePercent)
       
