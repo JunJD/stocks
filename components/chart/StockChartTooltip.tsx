@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { preloadStockChart } from '@/store/stockStore';
+import { preloadStockChart } from '@/lib/yahoo-finance/preloadStockChart';
 import { ParentSize } from '@visx/responsive';
 import { scaleLinear, scalePoint } from '@visx/scale';
 import { max, min } from '@visx/vendor/d3-array';

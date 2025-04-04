@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import useStockStore, { fetchStockData } from '@/store/stockStore'
+import useStockStore from '@/store/stockStore'
+import { fetchStockData } from '@/lib/yahoo-finance/fetchStockData'
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 

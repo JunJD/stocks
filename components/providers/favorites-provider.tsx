@@ -1,8 +1,8 @@
 'use client'
 
 import { ReactNode, createContext, useContext, useEffect } from 'react'
-import useStockStore, { fetchStockData } from '@/store/stockStore'
-
+import useStockStore from '@/store/stockStore'
+import { fetchStockData } from '@/lib/yahoo-finance/fetchStockData'
 // 创建自选股上下文
 export const FavoritesContext = createContext<{
   isLoading: boolean

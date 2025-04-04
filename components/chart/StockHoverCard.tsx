@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useFloating, autoUpdate, offset, arrow, shift, flip, useHover, useDismiss, useRole, useInteractions, FloatingArrow } from '@floating-ui/react';
-import { preloadStockChart } from '@/store/stockStore';
+import { preloadStockChart } from '@/lib/yahoo-finance/preloadStockChart';
 import { ParentSize } from '@visx/responsive';
 import { scaleLinear, scalePoint } from '@visx/scale';
 import { max, min } from '@visx/vendor/d3-array';

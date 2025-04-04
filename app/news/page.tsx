@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -39,7 +39,40 @@ interface NewsCategory {
   description: string;
 }
 
-export default function NewsPage() {
+// 加载中占位组件
+function NewsPageLoading() {
+  return (
+    <div className="container py-8 max-w-4xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-2xl font-bold mb-4 md:mb-0">股市快讯</h1>
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <Skeleton className="h-10 w-[220px]" />
+          <Skeleton className="h-10 w-[140px]" />
+        </div>
+      </div>
+      <Separator className="mb-6" />
+      <div className="space-y-4">
+        {Array(5)
+          .fill(null)
+          .map((_, index) => (
+            <Card key={index} className="mb-4">
+              <CardHeader className="pb-2">
+                <Skeleton className="h-6 w-2/3" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-1/4 mb-2" />
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-5/6" />
+              </CardContent>
+            </Card>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+// 包含useSearchParams的内容组件
+function NewsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -254,5 +287,14 @@ export default function NewsPage() {
 
       {renderPagination()}
     </div>
+  );
+}
+
+// 主页面组件，用Suspense包裹使用useSearchParams的内容
+export default function NewsPage() {
+  return (
+    <Suspense fallback={<NewsPageLoading />}>
+      <NewsContent />
+    </Suspense>
   );
 }

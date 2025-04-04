@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import useStockStore, { fetchStockData, StockData, QuoteData } from './stockStore';
+import useStockStore from './stockStore';
 import type { Interval } from "@/types/yahoo-finance";
+import { StockData } from "@/types/stock-data";
+import { QuoteData } from "@/types/quote-data";
+import { fetchStockData } from '@/lib/yahoo-finance/fetchStockData';
 
 interface UseStockDataResult {
   chartData: StockData | null;

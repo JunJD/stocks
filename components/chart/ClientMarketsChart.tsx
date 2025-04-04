@@ -33,9 +33,6 @@ export default function ClientMarketsChart({
       </div>
     );
   }
-
-  // 检查是否为中国指数
-  const isChinaIndex = ["sh000016", "sh000300", "sh000852"].includes(ticker);
   
   // 获取货币符号 - 根据货币类型设置
   let currencySymbol = "¥"; 

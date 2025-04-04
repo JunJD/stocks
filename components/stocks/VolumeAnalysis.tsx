@@ -1,15 +1,6 @@
 'use client'
 import React from 'react';
 import ReactECharts from 'echarts-for-react';
-import { StockData } from '@/store/stockStore';
-
-// 定义数据接口
-interface StockQuoteData {
-  date: string;
-  volume: number;
-  close: number;
-}
-
 interface VolumeAnalysisProps {
   data: Array<{
     date: string;

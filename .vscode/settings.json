@@ -4,7 +4,9 @@
         "chartjs",
         "fastapi",
         "iterrows",
+        "partialize",
         "sina",
+        "SZSE",
         "uvicorn"
     ]
 }

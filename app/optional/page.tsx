@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card"
 import { Suspense } from "react"
 import MarketsChart from "@/components/chart/MarketsChart"
-import { headers } from "next/headers"
 import { validateInterval, validateRange } from "@/lib/yahoo-finance/fetchChartData"
 import { DEFAULT_INTERVAL, DEFAULT_RANGE } from "@/lib/yahoo-finance/constants"
 import { Interval } from "@/types/yahoo-finance"
@@ -70,8 +69,6 @@ export default async function ScreenerPage({
         <FavoritesProvider>
             <div className="space-y-6 mb-10">
                 <div className="flex flex-col gap-4">
-
-                    <h2 className="py-4 text-xl font-medium">市场行情</h2>
                     <Card className="flex flex-col gap-4 p-6 lg:flex-row">
                         <div className="w-full lg:w-1/2">
                             <FavoritesList />

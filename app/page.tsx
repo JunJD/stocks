@@ -13,8 +13,6 @@ import {
   validateInterval,
   validateRange,
 } from "@/lib/yahoo-finance/fetchChartData"
-import { fetchStockSearch } from "@/lib/yahoo-finance/fetchStockSearch"
-import { headers } from "next/headers"
 
 import IndexTiles from "@/components/stocks/IndexTiles"
 
