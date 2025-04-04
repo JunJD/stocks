@@ -119,6 +119,13 @@ export function ScreenerTable({
     return columns.filter(col => visibleColumns[col.accessorKey]);
   };
 
+  // 处理跳转页面
+  const handleJumpToPage = (page: number) => {
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    handlePageChange(page);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -158,13 +165,13 @@ export function ScreenerTable({
             <TableHeader>
               <TableRow>
                 {/* 自选列 */}
-                <TableHead className="w-10">
+                <TableHead className="w-10 whitespace-nowrap">
                   <div className="text-center">自选</div>
                 </TableHead>
                 
                 {/* 动态列 */}
                 {getVisibleColumns().map((column, index) => (
-                  <TableHead key={index}>
+                  <TableHead key={index} className="whitespace-nowrap">
                     {typeof column.header === 'function' 
                       ? column.header() 
                       : column.header}
@@ -226,7 +233,7 @@ export function ScreenerTable({
         </CardContent>
       </Card>
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           <p className="text-sm font-medium">每页行数</p>
           <Select
             value={`${pageSize}`}
@@ -246,25 +253,61 @@ export function ScreenerTable({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          第 {currentPage} 页，共 {totalPages || 1} 页
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex-shrink-0 items-center justify-center text-sm font-medium flex-shrink-0">
+            第 {currentPage} 页，共 {totalPages || 1} 页
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="flex-shrink-0"
+          >
+            上一页
+          </Button>
+          <div className="flex items-center space-x-1 flex-shrink-0">
+            <Input
+              className="h-8 w-[50px]"
+              type="number"
+              min={1}
+              max={totalPages}
+              defaultValue={currentPage}
+              onChange={(e) => {
+                if (e.target.value && Number(e.target.value) > 0) {
+                  handleJumpToPage(Number(e.target.value));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.currentTarget.value) {
+                  handleJumpToPage(Number(e.currentTarget.value));
+                }
+              }}
+            />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+                if (input && input.value) {
+                  handleJumpToPage(Number(input.value));
+                }
+              }}
+              className="flex-shrink-0"
+            >
+              跳转
+            </Button>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="flex-shrink-0"
+          >
+            下一页
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-        >
-          上一页
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-        >
-          下一页
-        </Button>
       </div>
     </div>
   )
