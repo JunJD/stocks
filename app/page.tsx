@@ -8,19 +8,19 @@ import {
 import { DEFAULT_INTERVAL, DEFAULT_RANGE } from "@/lib/yahoo-finance/constants"
 import { Interval } from "@/types/yahoo-finance"
 import { Suspense } from "react"
-import MarketsChart from "@/components/chart/MarketsChart"
-import { columns } from "@/components/stocks/markets/columns"
+
 import {
   validateInterval,
   validateRange,
 } from "@/lib/yahoo-finance/fetchChartData"
 import { fetchStockSearch } from "@/lib/yahoo-finance/fetchStockSearch"
 import { headers } from "next/headers"
-import type { Metadata } from "next"
-import { fetchQuote } from "@/lib/yahoo-finance/fetchQuote"
+
 import IndexTiles from "@/components/stocks/IndexTiles"
-import { FavoritesProvider } from "@/components/providers/favorites-provider"
-import { FavoritesList } from "@/components/stocks/favorites-list"
+
+import ZDFDistributionChart from '@/components/stocks/ZDFDistributionChart';
+import VolumeAnalysis from "@/components/stocks/VolumeAnalysis"
+import { fetchScreenerStocks } from "@/lib/yahoo-finance/fetchScreenerStocks"
 
 function isMarketOpen() {
   const now = new Date()
@@ -45,8 +45,8 @@ function isMarketOpen() {
 
   // 检查当前时间是否在中国A股交易时间内（9:30 AM - 11:30 AM, 13:00 PM - 15:00 PM）
   if (
-    dayInCN >= 1 && 
-    dayInCN <= 5 && 
+    dayInCN >= 1 &&
+    dayInCN <= 5 &&
     ((timeInCN >= 9.5 && timeInCN < 11.5) || (timeInCN >= 13 && timeInCN < 15))
   ) {
     return true
@@ -100,51 +100,16 @@ export default async function Home({
     range,
     (searchParams?.interval as Interval) || DEFAULT_INTERVAL
   )
-  // 使用沪深300指数替代道琼斯指数获取新闻
-  const news = await fetchStockSearch("sh000300", 1)
 
-  // 使用我们的API获取股票数据
-  const fetchStockData = async (symbol: string) => {
-    try {
-      // 获取当前请求的 host
-      const headersList = headers()
-      const host = headersList.get('host') || 'localhost:3000' 
-      
-      // 构建URL
-      const url = process.env.NODE_ENV === 'development' 
-        ? `http://${host}/api/py/stock/quote?ticker=${encodeURIComponent(symbol)}`
-        : `${process.env.API_BASE_URL}/api/py/stock/quote?ticker=${encodeURIComponent(symbol)}`;
-      
-      // 发送请求
-      const response = await fetch(url)
-      
-      if (!response.ok) {
-        throw new Error(`Error fetching stock data: ${response.statusText}`)
-      }
-      
-      return await response.json()
-    } catch (error) {
-      console.error(`Error fetching data for ${symbol}:`, error)
-      return {
-        symbol: symbol,
-        shortName: `Error loading ${symbol}`,
-        regularMarketPrice: 0,
-        regularMarketChange: 0,
-        regularMarketChangePercent: 0,
-        regularMarketDayHigh: 0,
-        regularMarketDayLow: 0,
-        regularMarketVolume: 0
-      }
-    }
-  }
+  const results = await fetchScreenerStocks('all_stocks', -1)
+  // 确保返回的数据格式正确
+  const stockData = results?.quotes || []
 
-  const promises = tickers.map(({ symbol }) => fetchStockData(symbol))
-  const results = await Promise.all(promises)
-
-  const resultsWithTitles = results.map((result, index) => ({
+  const resultsWithTitles = stockData.map((result: any, index: number) => ({
     ...result,
     shortName: result.shortName || tickers[index].shortName,
   }))
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row">
@@ -191,7 +156,7 @@ export default async function Home({
           </Card>
         </div> */}
       </div>
-      <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="flex flex-col gap-6">
         <div className="w-full">
           <Card>
             <CardHeader>
@@ -204,8 +169,27 @@ export default async function Home({
             </CardContent>
           </Card>
         </div>
-        
-       
+
+        <div className="flex flex-col gap-6 mt-6">
+          <Suspense fallback={<div>加载中...</div>}>
+            <ZDFDistributionChart />
+          </Suspense>
+        </div>
+
+
+
+        <div className="flex flex-col gap-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">成交额分析</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<div>加载中...</div>}>
+                <VolumeAnalysis data={resultsWithTitles} />
+              </Suspense>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

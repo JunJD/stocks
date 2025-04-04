@@ -123,7 +123,6 @@ async def stock_search(ticker: str, news_count: int = 5) -> Dict:
                 # 使用多个数据源尝试获取数据
                 data_sources = [
                     {"name": "stock_zh_a_spot_em", "handler": lambda: ak.stock_zh_a_spot_em()},
-                    {"name": "stock_zh_a_spot_tx", "handler": lambda: ak.stock_zh_a_spot_tx()},
                     {"name": "stock_info_a_code_name", "handler": lambda: ak.stock_info_a_code_name()}
                 ]
                 

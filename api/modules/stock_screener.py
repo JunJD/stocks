@@ -4,11 +4,21 @@ import akshare as ak
 from fastapi import APIRouter
 from typing import List, Dict, Any
 from .utils.logger import get_logger
+from .utils.stock_data_fetcher import fetch_stock_zh_a_spot
 import pandas as pd
+import concurrent.futures
+import asyncio
+import traceback
 
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["stock_screener"])
+
+def run_in_thread(func, *args, **kwargs):
+    """在单独的线程中运行函数，避免与事件循环冲突"""
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(func, *args, **kwargs)
+        return future.result()
 
 @router.get("/stock/screener")
 async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dict:
@@ -22,7 +32,7 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
     - small_cap_gainers: 小市值涨幅股
     - growth_technology_stocks: 科技成长股
     :param screener: 筛选类型
-    :param count: 返回数量
+    :param count: 返回数量，设置为-1时返回全部数据
     :return: 股票列表
     """
     logger.info(f"获取筛选器数据，类型: {screener}, 数量: {count}")
@@ -34,10 +44,26 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
     try:
         # 全部筛选器数据基于东方财富A股行情
         logger.info("从东方财富获取A股实时行情数据")
-        df = ak.stock_zh_a_spot_em()
+        
+        # 使用自定义函数获取数据，而不是akshare的股票接口
+        df = run_in_thread(fetch_stock_zh_a_spot)
+        
+        # 记录数据框大小
+        logger.info(f"获取到 {len(df)} 条股票数据")
+        print('length:', len(df))
         
         if df is not None and not df.empty:
             logger.info(f"成功获取行情数据，条数: {len(df)}")
+            
+            # 记录一下列名，帮助调试
+            logger.debug(f"数据列名: {df.columns.tolist()}")
+            
+            # 确保必要的字段存在
+            required_fields = ["代码", "名称", "最新价", "涨跌额", "涨跌幅"]
+            for field in required_fields:
+                if field not in df.columns:
+                    logger.error(f"缺少必要字段 '{field}'")
+                    raise Exception(f"数据缺少必要字段 '{field}'")
             
             # 添加必要的字段
             df["symbol"] = df["代码"]
@@ -45,88 +71,150 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
             df["price"] = df["最新价"]
             df["change"] = df["涨跌额"]
             df["changePct"] = df["涨跌幅"]
-            df["pe"] = df["市盈率-动态"]
-            df["marketCap"] = df["总市值"]
+            
+            # 如果有市盈率字段，使用它
+            df["pe"] = df["市盈率-动态"] if "市盈率-动态" in df.columns else 0
+            
+            # 如果有市值字段，使用它
+            df["marketCap"] = df["总市值"] if "总市值" in df.columns else 0
+            
+            # 处理所处行业字段
+            if "所处行业" not in df.columns:
+                df["所处行业"] = "未知"
             
             # 按筛选类型处理数据
             if screener == "all_stocks":
                 # 全部股票，按代码排序
                 df = df.sort_values(by="代码")
-                # 限制返回数量，但增加到100条
-                df = df.head(min(count, 100))
+                # 当count为-1时，返回全部数据；否则限制返回数量
+                if count != -1:
+                    df = df.head(min(count, 100))
             elif screener == "most_actives":
                 # 成交活跃股
-                df = df.sort_values(by="成交额", ascending=False)
-                # 限制返回数量
-                df = df.head(count)
+                if "成交额" in df.columns:
+                    df = df.sort_values(by="成交额", ascending=False)
+                else:
+                    logger.warning("缺少'成交额'字段，使用'成交量'排序")
+                    df = df.sort_values(by="成交量", ascending=False)
+                # 当count为-1时，返回全部数据；否则限制返回数量
+                if count != -1:
+                    df = df.head(count)
             elif screener == "day_gainers":
                 # 涨幅前列
                 df = df.sort_values(by="涨跌幅", ascending=False)
-                # 限制返回数量
-                df = df.head(count)
+                # 当count为-1时，返回全部数据；否则限制返回数量
+                if count != -1:
+                    df = df.head(count)
             elif screener == "day_losers":
                 # 跌幅前列
                 df = df.sort_values(by="涨跌幅", ascending=True)
-                # 限制返回数量
-                df = df.head(count)
+                # 当count为-1时，返回全部数据；否则限制返回数量
+                if count != -1:
+                    df = df.head(count)
             elif screener == "small_cap_gainers":
                 # 小市值涨幅股
                 # 过滤出总市值小于300亿的股票
-                small_cap_df = df[df["总市值"] < 30000000000]
-                # 按涨跌幅排序
-                small_cap_df = small_cap_df.sort_values(by="涨跌幅", ascending=False)
-                # 限制返回数量
-                df = small_cap_df.head(count)
+                if "总市值" in df.columns:
+                    small_cap_df = df[df["总市值"] < 30000000000]
+                    # 按涨跌幅排序
+                    small_cap_df = small_cap_df.sort_values(by="涨跌幅", ascending=False)
+                    # 当count为-1时，返回全部数据；否则限制返回数量
+                    if count != -1:
+                        df = small_cap_df.head(count)
+                    else:
+                        df = small_cap_df
+                else:
+                    logger.warning("缺少'总市值'字段，返回涨幅前列")
+                    df = df.sort_values(by="涨跌幅", ascending=False)
+                    if count != -1:
+                        df = df.head(count)
             elif screener == "growth_technology_stocks":
                 # 科技成长股 - 以计算机、通信、电子行业为主
-                tech_df = df[df["所处行业"].str.contains("计算机|通信|电子|科技|互联网", na=False)]
-                # 按涨跌幅排序
-                tech_df = tech_df.sort_values(by="涨跌幅", ascending=False)
-                # 限制返回数量
-                df = tech_df.head(count)
+                if "所处行业" in df.columns:
+                    tech_df = df[df["所处行业"].str.contains("计算机|通信|电子|科技|互联网", na=False)]
+                    # 按涨跌幅排序
+                    tech_df = tech_df.sort_values(by="涨跌幅", ascending=False)
+                    # 当count为-1时，返回全部数据；否则限制返回数量
+                    if count != -1:
+                        df = tech_df.head(count)
+                    else:
+                        df = tech_df
+                else:
+                    logger.warning("缺少'所处行业'字段，返回涨幅前列")
+                    df = df.sort_values(by="涨跌幅", ascending=False)
+                    if count != -1:
+                        df = df.head(count)
             else:
                 # 默认按成交额排序
-                df = df.sort_values(by="成交额", ascending=False)
-                # 限制返回数量
-                df = df.head(count)
+                if "成交额" in df.columns:
+                    df = df.sort_values(by="成交额", ascending=False)
+                else:
+                    logger.warning("缺少'成交额'字段，使用'成交量'排序")
+                    df = df.sort_values(by="成交量", ascending=False)
+                # 当count为-1时，返回全部数据；否则限制返回数量
+                if count != -1:
+                    df = df.head(count)
             
             # 转换数据格式
             for _, row in df.iterrows():
-                # 格式化代码（添加市场前缀）
-                symbol = row["symbol"]
-                if symbol.startswith(("0", "3")):
-                    display_symbol = f"sz{symbol}"
-                elif symbol.startswith("6"):
-                    display_symbol = f"sh{symbol}"
-                else:
-                    display_symbol = symbol
+                try:
+                    # 格式化代码（添加市场前缀）
+                    symbol = row["symbol"]
+                    if not isinstance(symbol, str):
+                        symbol = str(symbol)
+                        
+                    if symbol.startswith(("0", "3")):
+                        display_symbol = f"sz{symbol}"
+                    elif symbol.startswith("6"):
+                        display_symbol = f"sh{symbol}"
+                    else:
+                        display_symbol = symbol
+                        
+                    # 安全地获取数值，确保不会出现NaN
+                    def safe_float(val, default=0):
+                        try:
+                            if pd.isna(val):
+                                return default
+                            return float(val)
+                        except (ValueError, TypeError):
+                            return default
                     
-                # 构建股票数据
-                stock = {
-                    "symbol": display_symbol,
-                    "shortName": row["name"],
-                    "regularMarketPrice": float(row["price"]),
-                    "regularMarketChange": float(row["change"]),
-                    "regularMarketChangePercent": float(row["changePct"]) / 100,  # 转换为小数
-                    "regularMarketVolume": float(row["成交量"]) if "成交量" in row and not pd.isna(row["成交量"]) else 0,
-                    "regularMarketDayHigh": float(row["最高"]) if "最高" in row and not pd.isna(row["最高"]) else 0,
-                    "regularMarketDayLow": float(row["最低"]) if "最低" in row and not pd.isna(row["最低"]) else 0,
-                    "regularMarketOpen": float(row["开盘"]) if "开盘" in row and not pd.isna(row["开盘"]) else 0,
-                    "regularMarketPreviousClose": float(row["昨收"]) if "昨收" in row and not pd.isna(row["昨收"]) else 0,
-                    "trailingPE": float(row["pe"]) if "pe" in row and not pd.isna(row["pe"]) else 0,
-                    "marketCap": float(row["marketCap"]) if "marketCap" in row else 0,
-                    "averageDailyVolume3Month": float(row["成交量"]) if "成交量" in row and not pd.isna(row["成交量"]) else 0,
-                    "sector": row["所处行业"] if "所处行业" in row else "未知",
-                    "currency": "CNY"
-                }
-                response["quotes"].append(stock)
+                    # 构建股票数据
+                    stock = {
+                        "symbol": display_symbol,
+                        "shortName": str(row["name"]),
+                        "regularMarketPrice": safe_float(row["price"]),
+                        "regularMarketChange": safe_float(row["change"]),
+                        "regularMarketChangePercent": safe_float(row["changePct"]) / 100,  # 转换为小数
+                        "regularMarketVolume": safe_float(row["成交量"]) if "成交量" in row and not pd.isna(row["成交量"]) else 0,
+                        "regularMarketDayHigh": safe_float(row["最高"]) if "最高" in row and not pd.isna(row["最高"]) else 0,
+                        "regularMarketDayLow": safe_float(row["最低"]) if "最低" in row and not pd.isna(row["最低"]) else 0,
+                        "regularMarketOpen": safe_float(row["今开"]) if "今开" in row and not pd.isna(row["今开"]) else 0,
+                        "regularMarketPreviousClose": safe_float(row["昨收"]) if "昨收" in row and not pd.isna(row["昨收"]) else 0,
+                        "trailingPE": safe_float(row["pe"]) if "pe" in row and not pd.isna(row["pe"]) else 0,
+                        "marketCap": safe_float(row["marketCap"]) if "marketCap" in row else 0,
+                        "averageDailyVolume3Month": safe_float(row["成交量"]) if "成交量" in row and not pd.isna(row["成交量"]) else 0,
+                        "sector": str(row["所处行业"]) if "所处行业" in row else "未知",
+                        "currency": "CNY"
+                    }
+                    response["quotes"].append(stock)
+                except Exception as e:
+                    logger.error(f"处理行数据时出错: {str(e)}")
+                    # 继续处理下一行，不要因为一行数据错误而中断整个处理
                 
             logger.debug(f"处理完成，返回 {len(response['quotes'])} 条数据")
+            
+            # 如果没有获取到任何数据，返回错误
+            if len(response["quotes"]) == 0:
+                logger.error("处理后没有有效数据")
+                response["error"] = "处理后没有有效数据"
         else:
-            raise Exception("获取到的数据为空")
+            logger.error("获取到的数据为空")
+            response["error"] = "获取到的数据为空"
             
     except Exception as e:
         logger.error(f"获取筛选器数据失败: {str(e)}", exc_info=True)
         response["error"] = f"获取数据失败: {str(e)}"
+        traceback.print_exc()  # 打印完整堆栈，帮助调试
         
     return response 
