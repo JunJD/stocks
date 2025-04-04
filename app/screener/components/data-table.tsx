@@ -23,39 +23,34 @@ import { Card, CardContent } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
 import StockHoverCard from "@/components/chart/StockHoverCard"
-import useStockStore from "@/store/stockStore"
 import { Star } from "lucide-react"
 import { useFavorites } from "@/components/providers/favorites-provider"
-
-// 定义筛选器选项
-const screenerOptions = [
-  { id: "all_stocks", label: "全部股票" },
-  { id: "most_actives", label: "成交活跃" },
-  { id: "day_gainers", label: "日涨幅榜" },
-  { id: "day_losers", label: "日跌幅榜" },
-  { id: "small_cap_gainers", label: "小盘涨幅榜" },
-  { id: "growth_technology_stocks", label: "科技成长股" },
-];
 
 interface DataTableProps {
   columns: any[]
   data: any[]
+  totalCount?: number
+  currentPage?: number
+  pageSize?: number
 }
 
 export function ScreenerTable({
   columns,
   data,
+  totalCount = 0,
+  currentPage = 1,
+  pageSize = 15
 }: DataTableProps) {
   const { favorites, removeFromFavorites, addToFavorites } = useFavorites()
   const [searchText, setSearchText] = useState("")
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({})
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(15)
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const { replace } = useRouter()
   
   // 初始化列可见性状态
   useEffect(() => {
@@ -70,11 +65,7 @@ export function ScreenerTable({
     return favorites.some(favorite => favorite.symbol === symbol)
   }, [favorites])
 
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const { replace } = useRouter()
-
-  // 筛选数据
+  // 本地筛选数据（仅基于搜索文本）
   const filteredData = data.filter(item => {
     if (!searchText) return true;
     const lowerCaseSearch = searchText.toLowerCase();
@@ -84,34 +75,24 @@ export function ScreenerTable({
     );
   });
 
-  // 分页
-  const totalPages = Math.ceil(filteredData.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
+  // 计算总页数（基于服务器返回的总数）
+  const totalItems = searchText ? filteredData.length : totalCount;
+  const totalPages = Math.ceil(totalItems / pageSize);
 
-  const getScreenerParam = useCallback(() => {
-    return searchParams.get("screener") || "most_actives";
-  }, [searchParams]);
+  // 处理分页变化
+  const handlePageChange = useCallback((newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    replace(`${pathname}?${params.toString()}`);
+  }, [searchParams, pathname, replace]);
 
-  const getCurrentScreenerLabel = useCallback(() => {
-    const currentValue = getScreenerParam();
-    return screenerOptions.find(option => option.id === currentValue)?.label || "成交活跃";
-  }, [getScreenerParam]);
-
-  const handleSelect = useCallback(
-    (value: string) => {
-      const params = new URLSearchParams(searchParams)
-      const SelectedValue = value.replace(/\s/g, "_").toLowerCase()
-
-      if (SelectedValue) {
-        params.set("screener", SelectedValue)
-      } else {
-        params.delete("screener")
-      }
-      replace(`${pathname}?${params.toString()}`)
-    },
-    [searchParams, pathname, replace]
-  )
+  // 处理每页数量变化
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("count", newSize.toString());
+    params.set("page", "1"); // 切换每页数量时重置到第一页
+    replace(`${pathname}?${params.toString()}`);
+  }, [searchParams, pathname, replace]);
 
   // 处理自选股添加/移除
   const handleToggleFavorite = (stock: any) => {
@@ -148,20 +129,6 @@ export function ScreenerTable({
             onChange={(e) => setSearchText(e.target.value)}
             className="h-8 w-[150px] lg:w-[250px]"
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-8 w-[150px] lg:w-[250px]">
-                筛选器: {getCurrentScreenerLabel()}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {screenerOptions.map((option) => (
-                <DropdownMenuItem key={option.id} onSelect={() => handleSelect(option.id)}>
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -206,8 +173,8 @@ export function ScreenerTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedData.length > 0 ? (
-                paginatedData.map((row, rowIndex) => (
+              {filteredData.length > 0 ? (
+                filteredData.map((row, rowIndex) => (
                   <TableRow key={rowIndex}>
                     {/* 自选星标列 */}
                     <TableCell className="w-10">
@@ -264,8 +231,7 @@ export function ScreenerTable({
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => {
-              setPageSize(Number(value));
-              setCurrentPage(1); // 重置到第一页
+              handlePageSizeChange(Number(value));
             }}
           >
             <SelectTrigger className="h-8 w-[70px]">
@@ -286,7 +252,7 @@ export function ScreenerTable({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage <= 1}
         >
           上一页
@@ -294,7 +260,7 @@ export function ScreenerTable({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
         >
           下一页

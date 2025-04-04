@@ -2,10 +2,7 @@ import type { Metadata } from "next"
 
 import { fetchScreenerStocks } from "@/lib/yahoo-finance/fetchScreenerStocks"
 import { HeatMap } from "./components/heat-map"
-import { ScreenerTable } from "./components/data-table"
-import { columns } from "@/components/stocks/markets/columns"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
 
 export const metadata: Metadata = {
   title: "股票筛选器 | AKShare股票数据",
@@ -19,7 +16,6 @@ export default async function ScreenerPage({
 }) {
   const screenerParam = searchParams.screener || "all_stocks"
   const countParam = searchParams.count || "100"
-  const activeView = searchParams.view || "heat-map" // 默认显示热力图视图
   
   // 定义筛选器选项及其中文标签
   const screenerOptions = [
@@ -46,31 +42,7 @@ export default async function ScreenerPage({
 
   return (
     <div className="container mx-auto py-6 mb-6">
-      <div className="mb-6 space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">股票筛选器</h1>
-        <p className="text-muted-foreground">
-          当前筛选: <span className="font-medium">{currentScreenerLabel}</span>
-        </p>
-      </div>
-      
-      <Tabs defaultValue={activeView}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="heat-map">热力图</TabsTrigger>
-          <TabsTrigger value="table">表格数据</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="heat-map">
-          <HeatMap />
-        </TabsContent>
-        
-        <TabsContent value="table">
-          <Card>
-            <CardContent className="p-0 pt-6">
-              <ScreenerTable columns={columns} data={stockData} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <HeatMap />
     </div>
   )
 }

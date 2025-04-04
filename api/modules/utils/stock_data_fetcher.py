@@ -8,10 +8,12 @@ import time
 import json
 import re
 
-def fetch_stock_zh_a_spot():
+def fetch_stock_zh_a_spot(count=100, page=1):
     """
     直接从东方财富获取A股实时行情数据，功能类似akshare的stock_zh_a_spot_em
-    :return: pandas.DataFrame
+    :param count: 每页获取的数据条数
+    :param page: 页码，从1开始
+    :return: pandas.DataFrame, total_count
     """
     timestamp = int(time.time() * 1000)
     url = "https://push2.eastmoney.com/api/qt/clist/get"
@@ -22,8 +24,8 @@ def fetch_stock_zh_a_spot():
         "fs": "m:0 t:6,m:0 t:80,m:1 t:2,m:1 t:23,m:0 t:81 s:2048",
         "fields": "f12,f13,f14,f1,f2,f4,f3,f152,f5,f6,f7,f15,f18,f16,f17,f10,f8,f9,f23",
         "fid": "f3",
-        "pn": "1",
-        "pz": "20000",  # 获取足够多的数据
+        "pn": str(page),
+        "pz": str(count if count > 0 else 5000),  # 使用传入的count参数，如果为-1则获取大量数据
         "po": "1",
         "ut": "fa5fd1943c7b386f172d6893dbfba10b",
         "_": str(timestamp)
@@ -48,17 +50,21 @@ def fetch_stock_zh_a_spot():
         
         data_json = r.json()
         
+        # 获取总数据量
+        total_count = data_json.get("data", {}).get("total", 0)
+        print(f"总数据量: {total_count}")
+        
         # 检查是否有data字段和diff字段
         if not data_json.get("data", {}).get("diff"):
             print(f"API返回结构有问题: {json.dumps(data_json, ensure_ascii=False)[:200]}...")
-            return pd.DataFrame()
+            return pd.DataFrame(), 0
         
         # 获取数据记录
         diff_data = data_json["data"]["diff"]
         print(f"获取到 {len(diff_data)} 条记录")
         
         if not diff_data:
-            return pd.DataFrame()
+            return pd.DataFrame(), 0
             
         # 转换为DataFrame
         df = pd.DataFrame(diff_data)
@@ -129,14 +135,14 @@ def fetch_stock_zh_a_spot():
                 df[col] = default_val
         
         print(f"处理后DataFrame形状: {df.shape}")
-        return df
+        return df, total_count
         
     except Exception as e:
         print(f"获取东方财富数据失败: {str(e)}")
         # 如果请求失败，打印完整的堆栈跟踪以便调试
         import traceback
         traceback.print_exc()
-        return pd.DataFrame() 
+        return pd.DataFrame(), 0
 
 def fetch_stock_zdf_distribution():
     """

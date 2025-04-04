@@ -21,36 +21,36 @@ def run_in_thread(func, *args, **kwargs):
         return future.result()
 
 @router.get("/stock/screener")
-async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dict:
+async def stock_screener(screener: str = "all_stocks", count: int = 40, page: int = 1) -> Dict:
     """
     获取股票筛选器数据API
     支持的筛选类型：
     - all_stocks: 全部股票（按代码排序）
-    - most_actives: 成交活跃
-    - day_gainers: 涨幅前列
-    - day_losers: 跌幅前列
-    - small_cap_gainers: 小市值涨幅股
-    - growth_technology_stocks: 科技成长股
     :param screener: 筛选类型
-    :param count: 返回数量，设置为-1时返回全部数据
-    :return: 股票列表
+    :param count: 每页返回数量
+    :param page: 页码，从1开始
+    :return: 股票列表和总条目数
     """
-    logger.info(f"获取筛选器数据，类型: {screener}, 数量: {count}")
+    logger.info(f"获取筛选器数据，类型: {screener}, 数量: {count}, 页码: {page}")
     
     response = {
-        "quotes": []
+        "quotes": [],
+        "total": 0
     }
     
     try:
         # 全部筛选器数据基于东方财富A股行情
         logger.info("从东方财富获取A股实时行情数据")
         
-        # 使用自定义函数获取数据，而不是akshare的股票接口
-        df = run_in_thread(fetch_stock_zh_a_spot)
+        # 使用自定义函数获取数据，传入分页参数
+        df, total_count = run_in_thread(fetch_stock_zh_a_spot, count, page)
         
-        # 记录数据框大小
-        logger.info(f"获取到 {len(df)} 条股票数据")
-        print('length:', len(df))
+        # 记录数据框大小和总条目数
+        logger.info(f"获取到 {len(df)} 条股票数据，总条目数: {total_count}")
+        print('length:', len(df), 'total:', total_count)
+        
+        # 设置响应中的总条目数
+        response["total"] = total_count
         
         if df is not None and not df.empty:
             logger.info(f"成功获取行情数据，条数: {len(df)}")
@@ -82,78 +82,9 @@ async def stock_screener(screener: str = "most_actives", count: int = 40) -> Dic
             if "所处行业" not in df.columns:
                 df["所处行业"] = "未知"
             
-            # 按筛选类型处理数据
-            if screener == "all_stocks":
-                # 全部股票，按代码排序
-                df = df.sort_values(by="代码")
-                # 当count为-1时，返回全部数据；否则限制返回数量
-                if count != -1:
-                    df = df.head(min(count, 100))
-            elif screener == "most_actives":
-                # 成交活跃股
-                if "成交额" in df.columns:
-                    df = df.sort_values(by="成交额", ascending=False)
-                else:
-                    logger.warning("缺少'成交额'字段，使用'成交量'排序")
-                    df = df.sort_values(by="成交量", ascending=False)
-                # 当count为-1时，返回全部数据；否则限制返回数量
-                if count != -1:
-                    df = df.head(count)
-            elif screener == "day_gainers":
-                # 涨幅前列
-                df = df.sort_values(by="涨跌幅", ascending=False)
-                # 当count为-1时，返回全部数据；否则限制返回数量
-                if count != -1:
-                    df = df.head(count)
-            elif screener == "day_losers":
-                # 跌幅前列
-                df = df.sort_values(by="涨跌幅", ascending=True)
-                # 当count为-1时，返回全部数据；否则限制返回数量
-                if count != -1:
-                    df = df.head(count)
-            elif screener == "small_cap_gainers":
-                # 小市值涨幅股
-                # 过滤出总市值小于300亿的股票
-                if "总市值" in df.columns:
-                    small_cap_df = df[df["总市值"] < 30000000000]
-                    # 按涨跌幅排序
-                    small_cap_df = small_cap_df.sort_values(by="涨跌幅", ascending=False)
-                    # 当count为-1时，返回全部数据；否则限制返回数量
-                    if count != -1:
-                        df = small_cap_df.head(count)
-                    else:
-                        df = small_cap_df
-                else:
-                    logger.warning("缺少'总市值'字段，返回涨幅前列")
-                    df = df.sort_values(by="涨跌幅", ascending=False)
-                    if count != -1:
-                        df = df.head(count)
-            elif screener == "growth_technology_stocks":
-                # 科技成长股 - 以计算机、通信、电子行业为主
-                if "所处行业" in df.columns:
-                    tech_df = df[df["所处行业"].str.contains("计算机|通信|电子|科技|互联网", na=False)]
-                    # 按涨跌幅排序
-                    tech_df = tech_df.sort_values(by="涨跌幅", ascending=False)
-                    # 当count为-1时，返回全部数据；否则限制返回数量
-                    if count != -1:
-                        df = tech_df.head(count)
-                    else:
-                        df = tech_df
-                else:
-                    logger.warning("缺少'所处行业'字段，返回涨幅前列")
-                    df = df.sort_values(by="涨跌幅", ascending=False)
-                    if count != -1:
-                        df = df.head(count)
-            else:
-                # 默认按成交额排序
-                if "成交额" in df.columns:
-                    df = df.sort_values(by="成交额", ascending=False)
-                else:
-                    logger.warning("缺少'成交额'字段，使用'成交量'排序")
-                    df = df.sort_values(by="成交量", ascending=False)
-                # 当count为-1时，返回全部数据；否则限制返回数量
-                if count != -1:
-                    df = df.head(count)
+            # 处理数据 - 只保留全部股票筛选器
+            # 全部股票，按代码排序
+            df = df.sort_values(by="代码")
             
             # 转换数据格式
             for _, row in df.iterrows():

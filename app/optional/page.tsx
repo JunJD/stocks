@@ -40,13 +40,14 @@ export default async function ScreenerPage({
         interval?: string
         screener?: string
         count?: string
+        page?: string
     }
 }) {
     const tickers = DEFAULT_INDICES
 
     const screenerParam = searchParams?.screener || "all_stocks"
-    const countParam = searchParams?.count || "100"
-
+    const countParam = searchParams?.count || '15'
+    const pageParam = searchParams?.page || '1'
     const rangeParam = validateRange(searchParams?.range || DEFAULT_RANGE)
     const tickerParam = searchParams?.ticker || tickers[0].symbol
     const intervalParam = validateInterval(
@@ -54,15 +55,20 @@ export default async function ScreenerPage({
         (searchParams?.interval as Interval) || DEFAULT_INTERVAL
     )
 
-    // 获取筛选结果数据
-    const data = await fetchScreenerStocks(screenerParam, parseInt(countParam))
+    // 获取筛选结果数据（带分页参数）
+    const data = await fetchScreenerStocks(
+        screenerParam, 
+        parseInt(countParam), 
+        parseInt(pageParam)
+    )
 
     // 确保返回的数据格式正确
     const stockData = data?.quotes || []
+    const totalCount = data?.total || 0
 
     return (
         <FavoritesProvider>
-            <div className="space-y-6">
+            <div className="space-y-6 mb-10">
                 <div className="flex flex-col gap-4">
 
                     <h2 className="py-4 text-xl font-medium">市场行情</h2>
@@ -78,7 +84,13 @@ export default async function ScreenerPage({
                     </Card>
                 </div>
                 <div className="space-y-4">
-                    <ScreenerTable data={stockData} columns={columns} />
+                    <ScreenerTable 
+                        data={stockData} 
+                        columns={columns}
+                        totalCount={totalCount}
+                        currentPage={parseInt(pageParam)}
+                        pageSize={parseInt(countParam)}
+                    />
                 </div>
             </div>
         </FavoritesProvider>
