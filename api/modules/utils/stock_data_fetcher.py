@@ -238,4 +238,222 @@ def fetch_stock_zdf_distribution():
         # 如果请求失败，打印完整的堆栈跟踪以便调试
         import traceback
         traceback.print_exc()
-        return {} 
+        return {}
+
+def fetch_industry_heatmap(count=100, page=1):
+    """
+    获取行业热力图数据
+    :param count: 每页获取的数据条数
+    :param page: 页码，从1开始
+    :return: pandas.DataFrame, total_count
+    """
+    timestamp = int(time.time() * 1000)
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "np": "1",
+        "fltt": "2",  # 返回的数据精度
+        "invt": "2",
+        "fid": "f62",  # 排序字段
+        "fs": "m:90 t:2",  # 行业板块
+        "fields": "f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87,f204,f205",
+        "pn": str(page),
+        "pz": str(count),
+        "po": "1",  # 排序方式，1为降序
+        "ut": "8dec03ba335b81bf4ebdf7b29ec27d15",
+        "_": str(timestamp)
+    }
+    
+    headers = {
+        "Accept": "*/*",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Pragma": "no-cache",
+        "Referer": "https://data.eastmoney.com/bkzj/hy.html",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+    }
+    
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=15)
+        r.raise_for_status()
+        
+        print(f"行业热力图API响应状态码: {r.status_code}")
+        
+        data_json = r.json()
+        
+        # 获取总数据量
+        total_count = data_json.get("data", {}).get("total", 0)
+        print(f"行业热力图总数据量: {total_count}")
+        
+        # 检查是否有data字段和diff字段
+        if not data_json.get("data", {}).get("diff"):
+            print(f"行业热力图API返回结构有问题: {json.dumps(data_json, ensure_ascii=False)[:200]}...")
+            return pd.DataFrame(), 0
+        
+        # 获取数据记录
+        diff_data = data_json["data"]["diff"]
+        print(f"获取到 {len(diff_data)} 条行业记录")
+        
+        if not diff_data:
+            return pd.DataFrame(), 0
+            
+        # 转换为DataFrame
+        df = pd.DataFrame(diff_data)
+        
+        # 字段映射表
+        field_mapping = {
+            'f12': '板块代码',
+            'f14': '板块名称',
+            'f2': '指数',
+            'f3': '涨跌幅',
+            'f62': '主力净流入',
+            'f184': '主力净流入占比',
+            'f66': '超大单净流入',
+            'f69': '超大单净流入占比',
+            'f72': '大单净流入',
+            'f75': '大单净流入占比',
+            'f78': '中单净流入',
+            'f81': '中单净流入占比',
+            'f84': '小单净流入',
+            'f87': '小单净流入占比',
+            'f204': '领涨股票',
+            'f205': '领涨股票代码'
+        }
+        
+        # 重命名列
+        df.rename(columns=field_mapping, inplace=True)
+        
+        # 转换数据类型
+        numeric_cols = [
+            '指数', '涨跌幅', '主力净流入', '主力净流入占比', 
+            '超大单净流入', '超大单净流入占比', '大单净流入', '大单净流入占比',
+            '中单净流入', '中单净流入占比', '小单净流入', '小单净流入占比'
+        ]
+        
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # 添加日期列
+        df['日期'] = time.strftime("%Y-%m-%d", time.localtime())
+        
+        print(f"处理后行业热力图DataFrame形状: {df.shape}")
+        return df, total_count
+        
+    except Exception as e:
+        print(f"获取行业热力图数据失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame(), 0
+
+def fetch_sh50_stocks(count=50, page=1):
+    """
+    获取上证50成分股数据
+    :param count: 每页获取的数据条数
+    :param page: 页码，从1开始
+    :return: pandas.DataFrame, total_count
+    """
+    timestamp = int(time.time() * 1000)
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "np": "1",
+        "fltt": "1",
+        "invt": "2",
+        "fs": "b:bk0611+f:!50",  # 修正为正确的上证50参数格式
+        "fields": "f12,f13,f14,f1,f2,f4,f3,f152,f5,f6,f7,f15,f18,f16,f17,f10,f8,f9,f23",
+        "fid": "f3",  # 按涨跌幅排序
+        "pn": str(page),
+        "pz": str(count),
+        "po": "1",  # 排序方式，1为降序
+        "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+        "_": str(timestamp)
+    }
+    
+    headers = {
+        "Accept": "*/*",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Pragma": "no-cache",
+        "Referer": "https://quote.eastmoney.com/center/gridlist.html",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+    }
+    
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=15)
+        r.raise_for_status()
+        
+        print(f"上证50 API响应状态码: {r.status_code}")
+        print(f"上证50 API完整URL: {r.url}")  # 打印完整URL用于调试
+        
+        data_json = r.json()
+        
+        # 获取总数据量
+        total_count = data_json.get("data", {}).get("total", 0)
+        print(f"上证50成分股总数据量: {total_count}")
+        
+        # 检查是否有data字段和diff字段
+        if not data_json.get("data", {}).get("diff"):
+            print(f"上证50 API返回结构有问题: {json.dumps(data_json, ensure_ascii=False)[:200]}...")
+            return pd.DataFrame(), 0
+        
+        # 获取数据记录
+        diff_data = data_json["data"]["diff"]
+        print(f"获取到 {len(diff_data)} 条上证50成分股记录")
+        
+        if not diff_data:
+            return pd.DataFrame(), 0
+            
+        # 转换为DataFrame
+        df = pd.DataFrame(diff_data)
+        
+        # 字段映射表
+        field_mapping = {
+            'f12': '代码',
+            'f13': '市场',
+            'f14': '名称',
+            'f2': '最新价',
+            'f3': '涨跌幅',
+            'f4': '涨跌额',
+            'f5': '成交量(手)',
+            'f6': '成交额',
+            'f7': '振幅',
+            'f15': '最高',
+            'f16': '最低',
+            'f17': '今开',
+            'f18': '昨收',
+            'f10': '量比',
+            'f8': '市盈率(动态)',
+            'f9': '市净率',
+            'f23': '涨速',
+            'f1': '相关链接',
+            'f152': '60日涨跌幅'
+        }
+        
+        # 重命名列
+        df.rename(columns=field_mapping, inplace=True)
+        
+        # 添加序号列
+        df['序号'] = range(1, len(df) + 1)
+        
+        # 转换数据类型
+        numeric_cols = [
+            '最新价', '涨跌幅', '涨跌额', '成交量(手)', '成交额', '振幅', '最高', '最低', 
+            '今开', '昨收', '量比', '市盈率(动态)', '市净率', '涨速', '60日涨跌幅'
+        ]
+        
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # 添加日期列
+        df['日期'] = time.strftime("%Y-%m-%d", time.localtime())
+        
+        print(f"处理后上证50成分股DataFrame形状: {df.shape}")
+        return df, total_count
+        
+    except Exception as e:
+        print(f"获取上证50成分股数据失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame(), 0 

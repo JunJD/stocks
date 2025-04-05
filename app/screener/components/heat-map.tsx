@@ -1,13 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, ReactNode, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { Responsive as ResponsiveGridLayout } from "react-grid-layout"
+import { RefreshCcw } from "lucide-react"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
+import { Treemap, ResponsiveContainer, Tooltip } from "recharts"
 
 interface HeatMapStock {
   symbol: string;
@@ -25,229 +27,347 @@ interface SectorData {
   changePct: number;
   stocks: HeatMapStock[];
   totalMarketCap: number;
+  netInflow?: number;
+  netInflowRatio?: number;
 }
 
 interface HeatMapProps {
   industryFilter?: string;
 }
 
+// TreeMap数据结构定义
+interface TreeMapItem {
+  name: string;
+  value: number;
+  symbol: string;
+  changePct: number;
+  netInflow?: number;
+  netInflowRatio?: number;
+  children?: TreeMapItem[];
+  color?: string;
+  maxValue?: number;
+}
+
 export function HeatMap({ industryFilter }: HeatMapProps) {
   const [heatMapData, setHeatMapData] = useState<SectorData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all");
-  const [windowWidth, setWindowWidth] = useState(1200);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("industry");
 
-  // 监听窗口大小变化
-  useEffect(() => {
-    function handleResize() {
-      setWindowWidth(window.innerWidth);
-    }
-    
-    if (typeof window !== 'undefined') {
-      setWindowWidth(window.innerWidth);
-      window.addEventListener('resize', handleResize);
-      
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, []);
-
-  useEffect(() => {
-    async function fetchHeatMapData() {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/py/stock/heatmap?type=${activeTab}`);
-        const data = await response.json();
-        if (data.success && data.sectors) {
-          setHeatMapData(data.sectors);
+  const fetchHeatMapData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/py/stock/heatmap?type=${activeTab}`);
+      const data = await response.json();
+      if (data.success && data.sectors) {
+        // 如果是行业板块，根据主力净流入绝对值排序
+        if (activeTab === "industry") {
+          data.sectors.sort((a: SectorData, b: SectorData) => {
+            const aFlow = Math.abs(a.netInflow || 0);
+            const bFlow = Math.abs(b.netInflow || 0);
+            return bFlow - aFlow;
+          });
         }
-      } catch (error) {
-        console.error("获取热力图数据失败:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+        setHeatMapData(data.sectors);
 
+        // 检查是否实际有数据
+        if (data.sectors.length === 0) {
+          setError("没有获取到数据，请刷新重试");
+        }
+      } else {
+        setError(data.message || "获取数据失败，请刷新重试");
+      }
+    } catch (error) {
+      console.error("获取热力图数据失败:", error);
+      setError("网络错误，请刷新重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchHeatMapData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // 计算热力图方块颜色
   const getColorByChange = (changePct: number) => {
     if (changePct > 0) {
-      // 绿色渐变 - 涨幅越大颜色越深
+      // 绿色渐变 - 更柔和的色调
       const intensity = Math.min(Math.abs(changePct) * 10, 100);
-      return `rgba(16, 185, 129, ${intensity / 100})`;
+      return `rgba(52, 211, 153, ${0.3 + intensity / 200})`;
     } else {
-      // 红色渐变 - 跌幅越大颜色越深
+      // 红色渐变 - 更柔和的色调
       const intensity = Math.min(Math.abs(changePct) * 10, 100);
-      return `rgba(239, 68, 68, ${intensity / 100})`;
+      return `rgba(248, 113, 113, ${0.3 + intensity / 200})`;
     }
   };
 
-  // 获取股票数据，已划分为不同的块区域
-  const getStockBlocks = (): { layout: any[], blocks: any[] } => {
-    if (heatMapData.length === 0) {
-      return { layout: [], blocks: [] };
+  // 计算资金流颜色 (用于行业热力图)
+  const getColorByNetInflow = (netInflow: number) => {
+    if (netInflow > 0) {
+      // 统一蓝色调 - 流入
+      const intensity = Math.min(Math.abs(netInflow) / 1000000000 * 100, 100);
+      return `rgba(59, 130, 246, ${0.4 + intensity / 200})`;
+    } else {
+      // 统一蓝色调 - 流出
+      const intensity = Math.min(Math.abs(netInflow) / 1000000000 * 100, 100);
+      return `rgba(147, 197, 253, ${0.4 + intensity / 200})`;
     }
-
-    const allStocks = heatMapData.flatMap(sector => 
-      sector.stocks.map(stock => ({
-        ...stock,
-        sectorName: sector.name
-      }))
-    );
-
-    // 根据市值对股票进行排序，让大市值股票获得更大的区块
-    const sortedStocks = [...allStocks].sort((a, b) => b.marketCap - a.marketCap);
-    
-    // 为布局创建不同大小的块
-    const layout = [];
-    const blocks = [];
-    
-    // 如果有数据，第一个是主要指数（大区块）
-    if (sortedStocks.length > 0) {
-      const mainStock = sortedStocks[0];
-      
-      // 主要指数的布局和区块内容
-      layout.push({ i: 'main', x: 0, y: 0, w: 6, h: 12, static: true });
-      blocks.push(renderStockBlock('main', mainStock, true));
-      
-      // 右侧第一行 - 3个小区块
-      const row1Stocks = sortedStocks.slice(1, 4);
-      row1Stocks.forEach((stock, index) => {
-        const id = `b${index + 1}`;
-        layout.push({ i: id, x: 6 + index*2, y: 0, w: 2, h: 4, static: true });
-        blocks.push(renderStockBlock(id, stock));
-      });
-      
-      // 右侧第二行 - 1个中区块和1个小区块
-      if (sortedStocks.length > 4) {
-        // 中区块
-        layout.push({ i: 'c1', x: 6, y: 4, w: 4, h: 4, static: true });
-        blocks.push(renderStockBlock('c1', sortedStocks[4], false, true));
-        
-        // 小区块
-        if (sortedStocks.length > 5) {
-          layout.push({ i: 'c2', x: 10, y: 4, w: 2, h: 4, static: true });
-          blocks.push(renderStockBlock('c2', sortedStocks[5]));
-        }
-      }
-      
-      // 右侧第三行 - 3个小区块
-      const row3Stocks = sortedStocks.slice(6, 9);
-      row3Stocks.forEach((stock, index) => {
-        const id = `d${index + 1}`;
-        layout.push({ i: id, x: 6 + index*2, y: 8, w: 2, h: 4, static: true });
-        blocks.push(renderStockBlock(id, stock));
-      });
-    }
-    
-    return { layout, blocks };
   };
 
-  // 渲染单个股票区块 
-  const renderStockBlock = (id: string, stock: HeatMapStock, isMain = false, isMedium = false) => {
-    if (!stock) {
-      return <div key={id} className="flex items-center justify-center rounded-lg border bg-card">
-        <p className="text-muted-foreground">暂无数据</p>
-      </div>;
+  // 根据值大小获取颜色
+  const getColorByValue = (value: number, max: number) => {
+    // 确保最大值不为0以避免除以0的错误
+    const safeMax = max > 0 ? max : 1;
+    const ratio = value / safeMax * 1000;
+
+    // 移除调试日志
+    console.log('safeMax', safeMax)
+    console.log('ratio', ratio)
+
+    return {
+      fill: `rgba(99, 68, 68, ${0.3 + ratio * 0.4})`,  // 温和的紫色
+      stroke: 'rgba(255, 255, 255, 0.3)',
+      strokeWidth: 1
+    };
+  };
+
+  // 将数据转换为TreeMap格式
+  const treeMapData = useMemo(() => {
+    if (heatMapData.length === 0 || loading) return [];
+
+    const root: TreeMapItem = {
+      name: activeTab === "industry" ? "行业资金流向" : "上证50成分股",
+      value: 0,
+      symbol: "",
+      changePct: 0,
+      children: []
+    };
+
+    // 分两种情况处理数据
+    if (activeTab === "industry") {
+      // 找出最大值用于计算比例
+      const maxValue = Math.max(
+        ...heatMapData.map(sector => Math.abs(sector.netInflow || 0))
+      );
+
+      console.log("行业最大净流入:", maxValue); // 调试日志
+
+      // 处理行业数据
+      root.children = heatMapData.map(sector => {
+        const value = Math.abs(sector.netInflow || 0);
+        console.log(`行业 ${sector.name} 值:`, value, "比例:", value / maxValue); // 调试日志
+
+        return {
+          name: sector.name,
+          value: value > 0 ? value : 100000000, // 确保所有区块至少有最小大小
+          symbol: sector.stocks[0]?.symbol || "",
+          changePct: sector.changePct,
+          netInflow: sector.netInflow,
+          netInflowRatio: sector.netInflowRatio,
+          maxValue // 正确传递最大值
+        };
+      });
+    } else {
+      // 找出最大市值用于计算比例
+      let maxMarketCap = 0;
+      heatMapData.forEach(sector => {
+        sector.stocks.forEach(stock => {
+          maxMarketCap = Math.max(maxMarketCap, stock.marketCap);
+        });
+      });
+
+      console.log("最大市值:", maxMarketCap); // 调试日志
+
+      // 处理上证50数据
+      heatMapData.forEach(sector => {
+        sector.stocks.forEach(stock => {
+          if (!root.children) root.children = [];
+          console.log(`股票 ${stock.name} 市值:`, stock.marketCap, "比例:", stock.marketCap / maxMarketCap); // 调试日志
+
+          root.children.push({
+            name: stock.name,
+            value: stock.marketCap > 0 ? stock.marketCap : 1000000000,
+            symbol: stock.symbol,
+            changePct: stock.changePct,
+            maxValue: maxMarketCap // 正确传递最大值
+          });
+        });
+      });
     }
-    
+
+    return [root];
+  }, [heatMapData, activeTab, loading]);
+
+  // 自定义TreeMap内容渲染
+  const renderTreeMapContent = (props: any) => {
+    const { root, depth, x, y, width, height, index, name, symbol, netInflow, changePct, value, maxValue } = props;
+
+    // 检查区块是否太小
+    const isTiny = width < 70 || height < 60;
+    const isSmall = width < 100 || height < 80;
+
+    const colors = getColorByValue(value, maxValue || 1);
+
     return (
-      <div 
-        key={id} 
-        className="overflow-hidden rounded-lg border transition-transform hover:scale-[1.02] cursor-pointer"
-        style={{ 
-          backgroundColor: getColorByChange(stock.changePct),
-          height: '100%'
-        }}
-        onClick={() => window.location.href = `/stocks/${stock.symbol}`}
-      >
-        <div className={`flex flex-col ${isMain ? 'p-6' : isMedium ? 'p-4' : 'p-2'} h-full`}>
-          <div>
-            <h3 className={`${isMain ? 'text-2xl' : isMedium ? 'text-lg' : 'text-sm'} font-bold truncate`}>
-              {stock.name}
-            </h3>
-            <p className={`${isMain ? 'text-lg' : 'text-xs'} opacity-90 truncate`}>
-              {stock.symbol}
-            </p>
-            {stock.sectorName && !isMain && (
-              <p className="text-xs opacity-75 truncate">{stock.sectorName}</p>
-            )}
-          </div>
-          
-          <div className="mt-auto">
-            {isMain && (
-              <p className="text-3xl font-bold mb-1">{stock.price.toFixed(2)}</p>
-            )}
-            <div className={`flex ${isMain ? 'flex-row gap-2' : 'flex-col'}`}>
-              {isMain && (
-                <span className={`${isMain ? 'text-xl' : 'text-sm'} font-semibold ${stock.changePct >= 0 ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
-                  {stock.changePct >= 0 ? '+' : ''}{stock.change.toFixed(2)}
-                </span>
-              )}
-              <span className={`${isMain ? 'text-xl' : 'text-sm'} font-semibold ${stock.changePct >= 0 ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}`}>
-                {isMain && '('}{stock.changePct >= 0 ? '+' : ''}{stock.changePct.toFixed(2)}%{isMain && ')'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: colors.fill,
+            stroke: colors.stroke,
+            strokeWidth: colors.strokeWidth,
+            cursor: 'pointer'
+          }}
+          onClick={() => window.location.href = `/stocks/${symbol}`}
+        />
+        <text
+          x={x + 5}
+          y={y + 18}
+          fill="#fff"
+          fontSize={isTiny ? 10 : isSmall ? 12 : 14}
+          fontWeight="bold"
+          textAnchor="start"
+        >
+          {name}
+        </text>
+        {!isTiny && netInflow !== undefined && (
+          <text
+            x={x + 5}
+            y={y + (isSmall ? 35 : 40)}
+            fill="#fff"
+            fontSize={isSmall ? 10 : 12}
+            textAnchor="start"
+          >
+            {netInflow >= 0 ? '流入' : '流出'}: {Math.abs(netInflow / 100000000).toFixed(2)}亿
+          </text>
+        )}
+        {!isTiny && (
+          <text
+            x={x + 5}
+            y={y + (isSmall ? 50 : 60)}
+            fill="#fff"
+            fontSize={isSmall ? 10 : 12}
+            textAnchor="start"
+          >
+            {changePct >= 0 ? '+' : ''}{changePct?.toFixed(2)}%
+          </text>
+        )}
+      </g>
     );
   };
 
-  // 处理加载中状态的布局
-  const renderLoadingLayout = () => {
-    const layout = [
-      { i: 'main', x: 0, y: 0, w: 6, h: 12, static: true },
-      { i: 'b1', x: 6, y: 0, w: 2, h: 4, static: true },
-      { i: 'b2', x: 8, y: 0, w: 2, h: 4, static: true },
-      { i: 'b3', x: 10, y: 0, w: 2, h: 4, static: true },
-      { i: 'c1', x: 6, y: 4, w: 4, h: 4, static: true },
-      { i: 'c2', x: 10, y: 4, w: 2, h: 4, static: true },
-      { i: 'd1', x: 6, y: 8, w: 2, h: 4, static: true },
-      { i: 'd2', x: 8, y: 8, w: 2, h: 4, static: true },
-      { i: 'd3', x: 10, y: 8, w: 2, h: 4, static: true }
-    ];
+  // 将渲染函数转换为组件
+  const TreemapContent = (props: any) => renderTreeMapContent(props);
 
-    const blocks = layout.map(item => (
-      <div key={item.i} className="rounded-lg">
-        <Skeleton className="h-full w-full rounded-md" />
-      </div>
-    ));
-
-    return { layout, blocks };
+  // 自定义工具提示
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="p-3 bg-background border rounded-md shadow-md">
+          <p className="font-bold">{data.name}</p>
+          {data.symbol && <p className="text-sm opacity-80">{data.symbol}</p>}
+          {data.netInflow !== undefined && (
+            <p className="text-sm">
+              资金{data.netInflow >= 0 ? '流入' : '流出'}: {Math.abs(data.netInflow / 100000000).toFixed(2)}亿
+              {data.netInflowRatio !== undefined && ` (${(data.netInflowRatio >= 0 ? '+' : '') + data.netInflowRatio.toFixed(2)}%)`}
+            </p>
+          )}
+          <p className="text-sm">
+            涨跌幅: {data.changePct >= 0 ? '+' : ''}{data.changePct.toFixed(2)}%
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
-  // 获取当前的布局和区块
-  const { layout, blocks } = loading ? renderLoadingLayout() : getStockBlocks();
+  // 渲染热力图
+  const renderHeatMap = () => {
+    if (loading) {
+      // 骨架屏
+      return (
+        <div className="grid grid-cols-3 gap-4 h-[520px]">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <Skeleton key={index} className={`h-full w-full rounded-md ${index === 0 ? 'col-span-2 row-span-2' : ''}`} />
+          ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return renderErrorState();
+    }
+
+    if (treeMapData.length === 0 || !treeMapData[0].children || treeMapData[0].children.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-[520px]">
+          <p className="text-muted-foreground">暂无数据</p>
+        </div>
+      );
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={520}>
+        <Treemap
+          data={treeMapData}
+          dataKey="value"
+          aspectRatio={4 / 3}
+          stroke="#fff"
+          content={<TreemapContent />}
+          animationDuration={500}
+        >
+          <Tooltip content={CustomTooltip} />
+        </Treemap>
+      </ResponsiveContainer>
+    );
+  };
+
+  // 处理错误状态
+  const renderErrorState = () => {
+    return (
+      <div className="flex flex-col items-center justify-center h-[520px] rounded-lg border bg-card p-6 text-center">
+        <p className="text-lg text-red-500 mb-4">{error}</p>
+        <button
+          onClick={fetchHeatMapData}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        >
+          <RefreshCcw size={16} />
+          刷新数据
+        </button>
+      </div>
+    );
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>市场热力图</CardTitle>
+        <CardTitle className="flex justify-between items-center">
+          <span>市场热力图</span>
+          <button
+            onClick={fetchHeatMapData}
+            className="text-sm font-normal p-1 rounded bg-muted hover:bg-muted/80"
+            title="刷新数据"
+          >
+            <RefreshCcw size={16} />
+          </button>
+        </CardTitle>
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="all">全市场</TabsTrigger>
-            <TabsTrigger value="concept">概念板块</TabsTrigger>
+            <TabsTrigger value="industry">行业板块</TabsTrigger>
+            <TabsTrigger value="sh50">上证50</TabsTrigger>
           </TabsList>
         </Tabs>
       </CardHeader>
       <CardContent>
         <div className="mb-8 overflow-hidden">
-          <ResponsiveGridLayout
-            className="layout"
-            layouts={{ lg: layout }}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 12, md: 12, sm: 12, xs: 4, xxs: 2 }}
-            rowHeight={30}
-            width={windowWidth > 1200 ? 1200 : windowWidth - 40}
-            margin={[10, 10]}
-            isDraggable={false}
-            isResizable={false}
-            containerPadding={[0, 0]}
-          >
-            {blocks}
-          </ResponsiveGridLayout>
+          {renderHeatMap()}
         </div>
       </CardContent>
     </Card>

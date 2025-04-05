@@ -4,9 +4,13 @@
         "chartjs",
         "fastapi",
         "iterrows",
+        "ndays",
         "partialize",
+        "referer",
+        "secid",
         "sina",
         "SZSE",
+        "Treemap",
         "uvicorn"
     ]
 }

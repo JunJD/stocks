@@ -1,8 +1,9 @@
 from typing import Dict, List
 from fastapi import APIRouter, Query
 import pandas as pd
-import akshare as ak
+import time
 from .utils.logger import get_logger
+from .utils.stock_data_fetcher import fetch_industry_heatmap, fetch_sh50_stocks
 
 # 创建logger实例
 logger = get_logger(__name__)
@@ -13,7 +14,7 @@ router = APIRouter(tags=["stock_heatmap"])
 async def stock_heatmap(type: str = "all") -> Dict:
     """
     获取股票热力图数据
-    :param type: 热力图类型，可选all(全市场), industry(行业板块), concept(概念板块)
+    :param type: 热力图类型，可选all(全市场), industry(行业板块), sh50(上证50)
     :return: 热力图数据
     """
     logger.info(f"接收到热力图数据请求: 类型={type}")
@@ -25,102 +26,162 @@ async def stock_heatmap(type: str = "all") -> Dict:
             "sectors": []
         }
         
-        if type == "concept":
-            # 获取概念板块涨跌幅数据
-            df_concept = ak.stock_board_concept_name_em()
+        if type == "industry":
+            # 获取行业板块热力图数据 - 从20条增加到50条
+            df_industry, _ = fetch_industry_heatmap(count=50)
             
-            # 处理前10个概念板块（为了性能）
-            for index, row in df_concept.head(10).iterrows():
-                concept_name = str(row["板块名称"])
-                concept_change = float(row["涨跌幅"].replace("%", ""))
+            if not df_industry.empty:
+                # 生成行业板块数据
+                industry_groups = {}
                 
-                # 获取该概念的个股
-                sector_stocks = []
-                try:
-                    stock_list = ak.stock_board_concept_cons_em(symbol=concept_name)
-                    if not stock_list.empty:
-                        # 获取个股行情
-                        codes = stock_list["代码"].tolist()
-                        stock_quotes = ak.stock_zh_a_spot_em()
-                        stock_quotes = stock_quotes[stock_quotes["代码"].isin(codes)]
-                        
-                        # 明确转换为Python原生类型
-                        total_market_cap = float(stock_quotes["总市值"].sum())
-                        
-                        for _, stock_row in stock_quotes.iterrows():
-                            symbol = stock_row["代码"]
-                            prefix = "sh" if symbol.startswith("6") else "sz"
-                            sector_stocks.append({
-                                "symbol": f"{prefix}{symbol}",
-                                "name": str(stock_row["名称"]),
-                                "price": float(stock_row["最新价"]),
-                                "change": float(stock_row["涨跌额"]),
-                                "changePct": float(stock_row["涨跌幅"]),
-                                "marketCap": float(stock_row["总市值"]),
-                                "sector": str(concept_name)
-                            })
-                            
-                    response["sectors"].append({
-                        "name": str(concept_name),
-                        "changePct": float(concept_change),
-                        "stocks": sector_stocks,
-                        "totalMarketCap": float(total_market_cap)
-                    })
-                except Exception as e:
-                    logger.warning(f"获取概念板块 {concept_name} 数据失败: {str(e)}")
-                
-        else:  # 全市场热力图
-            # 获取A股行情数据，按总市值分组
-            stock_quotes = ak.stock_zh_a_spot_em()
-            
-            # 创建市值区间分组
-            market_cap_groups = [
-                {"name": "超大市值", "min": 1000, "max": float('inf')},
-                {"name": "大市值", "min": 500, "max": 1000},
-                {"name": "中大市值", "min": 100, "max": 500},
-                {"name": "中小市值", "min": 50, "max": 100},
-                {"name": "小市值", "min": 10, "max": 50},
-                {"name": "微小市值", "min": 0, "max": 10}
-            ]
-            
-            # 转换总市值为数值类型
-            stock_quotes["总市值"] = pd.to_numeric(stock_quotes["总市值"], errors='coerce')
-            
-            # 按市值分组
-            for group in market_cap_groups:
-                filtered_stocks = stock_quotes[
-                    (stock_quotes["总市值"] >= group["min"]) & 
-                    (stock_quotes["总市值"] < group["max"])
-                ]
-                
-                if filtered_stocks.empty:
-                    continue
+                for _, row in df_industry.iterrows():
+                    industry_name = row["板块名称"]
+                    industry_change = row["涨跌幅"]
                     
-                sector_stocks = []
-                # 明确转换为Python原生类型
-                total_market_cap = float(filtered_stocks["总市值"].sum())
-                avg_change = float(filtered_stocks["涨跌幅"].mean())
+                    # 收集该行业的股票
+                    industry_stocks = []
+                    industry_stocks.append({
+                        "symbol": row["板块代码"],
+                        "name": industry_name,
+                        "price": float(row["指数"]),
+                        "change": 0.0,  # 没有直接提供涨跌额，这里可以留空
+                        "changePct": float(industry_change),
+                        "marketCap": float(abs(row["主力净流入"])),  # 用主力净流入绝对值作为市值参考
+                        "sector": "行业板块"
+                    })
+                    
+                    # 添加领涨股
+                    lead_stock = {
+                        "symbol": row["领涨股票代码"],
+                        "name": row["领涨股票"],
+                        "price": 0.0,  # 没有价格信息
+                        "change": 0.0, 
+                        "changePct": 0.0,
+                        "marketCap": float(abs(row["主力净流入"]) * 0.5),  # 估算
+                        "sector": industry_name
+                    }
+                    industry_stocks.append(lead_stock)
+                    
+                    response["sectors"].append({
+                        "name": industry_name,
+                        "changePct": float(industry_change),
+                        "stocks": industry_stocks,
+                        "totalMarketCap": float(abs(row["主力净流入"])),
+                        "netInflow": float(row["主力净流入"]),
+                        "netInflowRatio": float(row["主力净流入占比"]) if "主力净流入占比" in row else 0.0
+                    })
                 
-                # 取该组中市值前30的股票
-                top_stocks = filtered_stocks.nlargest(30, "总市值")
+        elif type == "sh50":
+            # 获取上证50成分股数据
+            df_sh50, _ = fetch_sh50_stocks()
+            
+            if not df_sh50.empty:
+                # 上证50作为一个整体板块
+                sh50_stocks = []
                 
-                for _, row in top_stocks.iterrows():
+                # 计算总市值和平均涨跌幅
+                if "总市值" in df_sh50.columns:
+                    total_market_cap = float(df_sh50["总市值"].sum())
+                    avg_change = float(df_sh50["涨跌幅"].mean())
+                else:
+                    # 如果没有总市值列，使用成交额的10倍作为估计
+                    total_market_cap = float(df_sh50["成交额"].sum() * 10)
+                    avg_change = float(df_sh50["涨跌幅"].mean())
+                
+                for _, row in df_sh50.iterrows():
                     symbol = row["代码"]
                     prefix = "sh" if symbol.startswith("6") else "sz"
-                    sector_stocks.append({
+                    market_cap = float(row["总市值"]) if "总市值" in row else float(row["成交额"] * 10)
+                    
+                    sh50_stocks.append({
                         "symbol": f"{prefix}{symbol}",
                         "name": str(row["名称"]),
                         "price": float(row["最新价"]),
                         "change": float(row["涨跌额"]),
                         "changePct": float(row["涨跌幅"]),
-                        "marketCap": float(row["总市值"]),
+                        "marketCap": market_cap,
+                        "sector": "上证50"
                     })
                 
                 response["sectors"].append({
-                    "name": str(group["name"]),
-                    "changePct": float(avg_change),
-                    "stocks": sector_stocks,
-                    "totalMarketCap": float(total_market_cap)
+                    "name": "上证50",
+                    "changePct": avg_change,
+                    "stocks": sh50_stocks,
+                    "totalMarketCap": total_market_cap
+                })
+                
+        else:  # 默认全市场热力图，同时包含行业和上证50
+            df_industry, _ = fetch_industry_heatmap(count=30)
+            
+            if not df_industry.empty:
+                for _, row in df_industry.iterrows():
+                    industry_name = row["板块名称"]
+                    industry_change = row["涨跌幅"]
+                    
+                    industry_stocks = []
+                    industry_stocks.append({
+                        "symbol": row["板块代码"],
+                        "name": industry_name,
+                        "price": float(row["指数"]),
+                        "change": 0.0,
+                        "changePct": float(industry_change),
+                        "marketCap": float(abs(row["主力净流入"])),
+                        "sector": "行业板块"
+                    })
+                    
+                    # 添加领涨股
+                    lead_stock = {
+                        "symbol": row["领涨股票代码"],
+                        "name": row["领涨股票"],
+                        "price": 0.0,
+                        "change": 0.0,
+                        "changePct": 0.0,
+                        "marketCap": float(abs(row["主力净流入"]) * 0.5),
+                        "sector": industry_name
+                    }
+                    industry_stocks.append(lead_stock)
+                    
+                    response["sectors"].append({
+                        "name": industry_name,
+                        "changePct": float(industry_change),
+                        "stocks": industry_stocks,
+                        "totalMarketCap": float(abs(row["主力净流入"])),
+                        "netInflow": float(row["主力净流入"])
+                    })
+            
+            # 获取上证50数据
+            df_sh50, _ = fetch_sh50_stocks(count=15)  # 限制为前15只
+            
+            if not df_sh50.empty:
+                sh50_stocks = []
+                
+                if "总市值" in df_sh50.columns:
+                    total_market_cap = float(df_sh50["总市值"].sum())
+                    avg_change = float(df_sh50["涨跌幅"].mean())
+                else:
+                    total_market_cap = float(df_sh50["成交额"].sum() * 10)
+                    avg_change = float(df_sh50["涨跌幅"].mean())
+                
+                for _, row in df_sh50.iterrows():
+                    symbol = row["代码"]
+                    prefix = "sh" if symbol.startswith("6") else "sz"
+                    market_cap = float(row["总市值"]) if "总市值" in row else float(row["成交额"] * 10)
+                    
+                    sh50_stocks.append({
+                        "symbol": f"{prefix}{symbol}",
+                        "name": str(row["名称"]),
+                        "price": float(row["最新价"]),
+                        "change": float(row["涨跌额"]),
+                        "changePct": float(row["涨跌幅"]),
+                        "marketCap": market_cap,
+                        "sector": "上证50"
+                    })
+                
+                response["sectors"].append({
+                    "name": "上证50",
+                    "changePct": avg_change,
+                    "stocks": sh50_stocks,
+                    "totalMarketCap": total_market_cap
                 })
         
         logger.info(f"热力图数据获取成功，共{len(response['sectors'])}个板块")
