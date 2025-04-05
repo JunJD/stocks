@@ -101,8 +101,8 @@ class StockDataProvider:
             return ak.stock_zh_a_hist_min_em(
                 symbol=clean_symbol, 
                 period=period,
-                start_date=start_time, 
-                end_date=end_time,
+                # start_date=start_time, 
+                # end_date=end_time,
                 adjust='qfq'
             )
         except Exception as e:
@@ -159,8 +159,8 @@ class StockDataProvider:
             return ak.index_zh_a_hist_min_em(
                 symbol=clean_symbol, 
                 period=period, 
-                start_date=start_date, 
-                end_date=end_date
+                # start_date=start_date, 
+                # end_date=end_date
             )
         except Exception as e:
             logger.error(f"获取指数分时数据失败(index_zh_a_hist_min_em): {e}", exc_info=True)
@@ -174,7 +174,7 @@ class StockDataProvider:
         :return: 标准化后的分时数据
         """
         clean_ticker, is_index = self.standardize_ticker(ticker)
-        
+
         # 定义数据源列表，按优先级排序
         data_sources = []
         
