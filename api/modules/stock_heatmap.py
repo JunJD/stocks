@@ -25,46 +25,7 @@ async def stock_heatmap(type: str = "all") -> Dict:
             "sectors": []
         }
         
-        if type == "industry":
-            # 获取行业板块涨跌幅数据
-            df_industry = ak.stock_sector_spot_em()
-            for _, group in df_industry.groupby("板块名称"):
-                sector_name = group["板块名称"].iloc[0]
-                sector_change = float(group["涨跌幅"].iloc[0].replace("%", ""))
-                
-                # 获取该行业的个股
-                sector_stocks = []
-                stock_list = ak.stock_board_industry_cons_em(symbol=sector_name)
-                if not stock_list.empty:
-                    # 获取个股行情
-                    codes = stock_list["代码"].tolist()
-                    stock_quotes = ak.stock_zh_a_spot_em()
-                    stock_quotes = stock_quotes[stock_quotes["代码"].isin(codes)]
-                    
-                    # 明确转换为Python原生类型
-                    total_market_cap = float(stock_quotes["总市值"].sum())
-                    
-                    for _, row in stock_quotes.iterrows():
-                        symbol = row["代码"]
-                        prefix = "sh" if symbol.startswith("6") else "sz"
-                        sector_stocks.append({
-                            "symbol": f"{prefix}{symbol}",
-                            "name": str(row["名称"]),
-                            "price": float(row["最新价"]),
-                            "change": float(row["涨跌额"]),
-                            "changePct": float(row["涨跌幅"]),
-                            "marketCap": float(row["总市值"]),
-                            "sector": str(sector_name)
-                        })
-                
-                response["sectors"].append({
-                    "name": str(sector_name),
-                    "changePct": float(sector_change),
-                    "stocks": sector_stocks,
-                    "totalMarketCap": float(total_market_cap)
-                })
-                
-        elif type == "concept":
+        if type == "concept":
             # 获取概念板块涨跌幅数据
             df_concept = ak.stock_board_concept_name_em()
             

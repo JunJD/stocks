@@ -1,4 +1,3 @@
-import { DataTable } from "@/components/stocks/markets/data-table"
 import {
   Card,
   CardHeader,
@@ -68,37 +67,14 @@ const DEFAULT_INDICES = [
 const tickersFutures = DEFAULT_INDICES
 const tickerAfterOpen = DEFAULT_INDICES
 
-function getMarketSentiment(changePercentage: number | undefined) {
-  if (!changePercentage) {
-    return "neutral"
-  }
-  if (changePercentage > 0.1) {
-    return "bullish"
-  } else if (changePercentage < -0.1) {
-    return "bearish"
-  } else {
-    return "neutral"
-  }
-}
-
 export default async function Home({
   searchParams,
 }: {
   searchParams?: {
-    ticker?: string
-    range?: string
-    interval?: string
+
   }
 }) {
   const tickers = isMarketOpen() ? tickerAfterOpen : tickersFutures
-
-  const ticker = searchParams?.ticker || tickers[0].symbol
-  const range = validateRange(searchParams?.range || DEFAULT_RANGE)
-  const interval = validateInterval(
-    range,
-    (searchParams?.interval as Interval) || DEFAULT_INTERVAL
-  )
-
   const results = await fetchScreenerStocks('all_stocks', -1)
   // 确保返回的数据格式正确
   const stockData = results?.quotes || []

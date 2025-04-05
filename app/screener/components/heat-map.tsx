@@ -228,7 +228,6 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="all">全市场</TabsTrigger>
-            <TabsTrigger value="industry">行业板块</TabsTrigger>
             <TabsTrigger value="concept">概念板块</TabsTrigger>
           </TabsList>
         </Tabs>
