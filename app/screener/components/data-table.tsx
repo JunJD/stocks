@@ -203,17 +203,9 @@ export function ScreenerTable({
                     {/* 数据列 */}
                     {getVisibleColumns().map((column, colIndex) => (
                       <TableCell key={colIndex}>
-                        {column.accessorKey === 'symbol' ? (
-                          <StockHoverCard symbol={row.symbol}>
-                            {column.cell 
-                              ? column.cell({ row }) 
-                              : row[column.accessorKey]}
-                          </StockHoverCard>
-                        ) : (
-                          column.cell 
-                            ? column.cell({ row }) 
-                            : row[column.accessorKey]
-                        )}
+                        {column.cell 
+                          ? column.cell({ row }) 
+                          : row[column.accessorKey]}
                       </TableCell>
                     ))}
                   </TableRow>

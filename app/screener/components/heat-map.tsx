@@ -10,6 +10,7 @@ import { RefreshCcw } from "lucide-react"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts"
+import StockHoverCard from "@/components/chart/StockHoverCard"
 
 interface HeatMapStock {
   symbol: string;
@@ -121,14 +122,15 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
   const getColorByValue = (value: number, max: number) => {
     // 确保最大值不为0以避免除以0的错误
     const safeMax = max > 0 ? max : 1;
-    const ratio = value / safeMax * 1000;
-
+    // 调整比例因子使颜色差异更明显
+    const ratio = value / safeMax;
+    
     // 移除调试日志
-    console.log('safeMax', safeMax)
-    console.log('ratio', ratio)
+    // console.log('safeMax', safeMax)
+    // console.log('ratio', ratio)
 
     return {
-      fill: `rgba(99, 68, 68, ${0.3 + ratio * 0.4})`,  // 温和的紫色
+      fill: `rgba(99, 102, 241, ${0.3 + ratio * 0.4})`,  // 温和的靛蓝色
       stroke: 'rgba(255, 255, 255, 0.3)',
       strokeWidth: 1
     };
@@ -204,14 +206,18 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
   // 自定义TreeMap内容渲染
   const renderTreeMapContent = (props: any) => {
     const { root, depth, x, y, width, height, index, name, symbol, netInflow, changePct, value, maxValue } = props;
-
+    
     // 检查区块是否太小
     const isTiny = width < 70 || height < 60;
     const isSmall = width < 100 || height < 80;
-
+    
     const colors = getColorByValue(value, maxValue || 1);
 
-    return (
+    // 仅当有symbol且不是"行业资金流向"和"上证50成分股"的根节点时启用悬停卡片
+    const enableHoverCard = symbol && symbol !== "" && symbol !== "root";
+    
+    // 构建内容元素
+    const contentElement = (
       <g>
         <rect
           x={x}
@@ -260,6 +266,37 @@ export function HeatMap({ industryFilter }: HeatMapProps) {
         )}
       </g>
     );
+
+    // 如果有股票代码，使用StockHoverCard包装
+    if (enableHoverCard) {
+      // 注：SVG内容在StockHoverCard内不能直接渲染
+      // 因为StockHoverCard包含的是React元素不是SVG元素
+      // 我们需要一种不同的方法来实现这个功能
+      
+      // 创建一个透明的矩形覆盖在图形上，用于触发悬停
+      return (
+        <>
+          {contentElement}
+          <foreignObject x={x} y={y} width={width} height={height}>
+            <div 
+              style={{ 
+                width: '100%', 
+                height: '100%',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <StockHoverCard symbol={symbol}>
+                <div style={{ width: '100%', height: '100%', opacity: 0 }}></div>
+              </StockHoverCard>
+            </div>
+          </foreignObject>
+        </>
+      );
+    }
+    
+    // 如果没有股票代码，直接返回内容
+    return contentElement;
   };
 
   // 将渲染函数转换为组件

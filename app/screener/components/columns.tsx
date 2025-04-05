@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import StockHoverCard from "@/components/chart/StockHoverCard"
 
 /**
  * 股票筛选器数据格式定义
@@ -13,10 +14,14 @@ export interface ScreenerQuote {
   regularMarketChange: number
   regularMarketChangePercent: number
   regularMarketVolume: number
+  regularMarketDayHigh?: number
+  regularMarketDayLow?: number
+  regularMarketOpen?: number
+  regularMarketPreviousClose?: number
   averageDailyVolume3Month?: number
   marketCap?: number
-  epsTrailingTwelveMonths?: number
   trailingPE?: number
+  sector?: string
   [key: string]: any
 }
 
@@ -50,6 +55,20 @@ export const columns = [
     accessorKey: "shortName",
     meta: "公司",
     header: "公司",
+    cell: (props: any) => {
+      const symbol = props.row.symbol
+      const shortName = props.row.shortName
+
+      if (!shortName) {
+        return <div>N/A</div>
+      }
+
+      return (
+        <StockHoverCard symbol={symbol}>
+          <div>{shortName}</div>
+        </StockHoverCard>
+      )
+    },
   },
   {
     accessorKey: "regularMarketPrice",
@@ -129,96 +148,52 @@ export const columns = [
     },
   },
   {
-    accessorKey: "regularMarketVolume",
-    meta: "成交量",
-    header: () => <div className="text-right">成交量</div>,
+    accessorKey: "regularMarketOpen",
+    meta: "今开",
+    header: () => <div className="text-right">今开</div>,
     cell: (props: any) => {
-      const volume = props.row.regularMarketVolume
-      if (volume === undefined || volume === null) {
+      const open = props.row.regularMarketOpen
+      if (open === undefined || open === null) {
         return <div className="text-right">N/A</div>
       }
-
-      const formatVolume = (volume: number): string => {
-        if (volume >= 1e12) {
-          return (volume / 1e12).toFixed(3) + "T"
-        } else if (volume >= 1e9) {
-          return (volume / 1e9).toFixed(3) + "B"
-        } else if (volume >= 1e6) {
-          return (volume / 1e6).toFixed(3) + "M"
-        } else if (volume >= 1e3) {
-          return (volume / 1e3).toFixed(3) + "K"
-        }
-        return volume.toString()
-      }
-
-      return <div className="text-right">{formatVolume(volume)}</div>
+      return <div className="text-right">{open.toFixed(3)}</div>
     },
   },
   {
-    accessorKey: "averageDailyVolume3Month",
-    meta: "平均成交量",
-    header: () => <div className="text-right">平均成交量</div>,
+    accessorKey: "regularMarketDayHigh",
+    meta: "最高",
+    header: () => <div className="text-right">最高</div>,
     cell: (props: any) => {
-      const volume = props.row.averageDailyVolume3Month
-      if (volume === undefined || volume === null) {
+      const high = props.row.regularMarketDayHigh
+      if (high === undefined || high === null) {
         return <div className="text-right">N/A</div>
       }
-
-      const formatVolume = (volume: number): string => {
-        if (volume >= 1e12) {
-          return (volume / 1e12).toFixed(3) + "T"
-        } else if (volume >= 1e9) {
-          return (volume / 1e9).toFixed(3) + "B"
-        } else if (volume >= 1e6) {
-          return (volume / 1e6).toFixed(3) + "M"
-        } else if (volume >= 1e3) {
-          return (volume / 1e3).toFixed(3) + "K"
-        }
-        return volume.toString()
-      }
-
-      return <div className="text-right">{formatVolume(volume)}</div>
+      return <div className="text-right">{high.toFixed(3)}</div>
     },
   },
   {
-    accessorKey: "marketCap",
-    meta: "市值",
-    header: () => <div className="text-right">市值</div>,
+    accessorKey: "regularMarketDayLow",
+    meta: "最低",
+    header: () => <div className="text-right">最低</div>,
     cell: (props: any) => {
-      const marketCap = props.row.marketCap
-      if (marketCap === undefined || marketCap === null) {
+      const low = props.row.regularMarketDayLow
+      if (low === undefined || low === null) {
         return <div className="text-right">N/A</div>
       }
-
-      const formatMarketCap = (marketCap: number): string => {
-        if (marketCap >= 1e12) {
-          return (marketCap / 1e12).toFixed(3) + "T"
-        } else if (marketCap >= 1e9) {
-          return (marketCap / 1e9).toFixed(3) + "B"
-        } else if (marketCap >= 1e6) {
-          return (marketCap / 1e6).toFixed(3) + "M"
-        } else if (marketCap >= 1e3) {
-          return (marketCap / 1e3).toFixed(3) + "K"
-        }
-        return marketCap.toString()
-      }
-
-      return <div className="text-right">{formatMarketCap(marketCap)}</div>
+      return <div className="text-right">{low.toFixed(3)}</div>
     },
   },
   {
-    accessorKey: "P/E",
-    meta: "市盈率",
-    sortUndefined: -1,
-    header: () => <div className="text-right">市盈率</div>,
+    accessorKey: "regularMarketPreviousClose",
+    meta: "昨收",
+    header: () => <div className="text-right">昨收</div>,
     cell: (props: any) => {
-      const pe = props.row.trailingPE;
-
-      if (pe === undefined || pe === null || pe <= 0) {
+      const close = props.row.regularMarketPreviousClose
+      if (close === undefined || close === null) {
         return <div className="text-right">N/A</div>
       }
-
-      return <div className="text-right">{pe.toFixed(3)}</div>
+      return <div className="text-right">{close.toFixed(3)}</div>
     },
   },
+ 
 ]

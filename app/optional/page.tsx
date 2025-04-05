@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { fetchScreenerStocks } from "@/lib/yahoo-finance/fetchScreenerStocks"
 import { ScreenerTable } from "@/app/screener/components/data-table"
-import { columns } from "@/components/stocks/markets/columns"
+import { columns } from "@/app/screener/components/columns"
 
 import {
     Card,
