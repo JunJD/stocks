@@ -79,7 +79,7 @@ export const columns = [
       if (price === undefined || price === null) {
         return <div className="text-right">N/A</div>
       }
-      return <div className="text-right">{price.toFixed(3)}</div>
+      return <div className="text-right">{(price / 100).toFixed(3)}</div>
     },
   },
   {
@@ -92,7 +92,7 @@ export const columns = [
         return <div className="text-right">N/A</div>
       }
 
-      const formattedChange = Math.abs(change).toFixed(3)
+      const formattedChange = Math.abs(change / 100).toFixed(3)
       const isPositive = change > 0
       const isZero = change === 0
 
@@ -125,7 +125,7 @@ export const columns = [
         return <div className="text-right">N/A</div>
       }
 
-      const formattedChange = `${(changePercent * 100).toFixed(2)}%`
+      const formattedChange = `${(changePercent).toFixed(2)}%`
       const isPositive = changePercent > 0
       const isZero = changePercent === 0
 
@@ -156,7 +156,7 @@ export const columns = [
       if (open === undefined || open === null) {
         return <div className="text-right">N/A</div>
       }
-      return <div className="text-right">{open.toFixed(3)}</div>
+      return <div className="text-right">{(open / 100).toFixed(3)}</div>
     },
   },
   {
@@ -168,7 +168,7 @@ export const columns = [
       if (high === undefined || high === null) {
         return <div className="text-right">N/A</div>
       }
-      return <div className="text-right">{high.toFixed(3)}</div>
+      return <div className="text-right">{(high / 100).toFixed(3)}</div>
     },
   },
   {
@@ -180,7 +180,7 @@ export const columns = [
       if (low === undefined || low === null) {
         return <div className="text-right">N/A</div>
       }
-      return <div className="text-right">{low.toFixed(3)}</div>
+      return <div className="text-right">{(low / 100).toFixed(3)}</div>
     },
   },
   {
@@ -192,7 +192,7 @@ export const columns = [
       if (close === undefined || close === null) {
         return <div className="text-right">N/A</div>
       }
-      return <div className="text-right">{close.toFixed(3)}</div>
+      return <div className="text-right">{(close / 100).toFixed(3)}</div>
     },
   },
  
