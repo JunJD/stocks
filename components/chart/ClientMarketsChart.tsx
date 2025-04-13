@@ -45,10 +45,30 @@ export default function ClientMarketsChart({
   }
   
   // 准备图表数据
-  const chartQuotes = currentChartData.quotes.map((quote: any) => ({
+  const isIntraday = interval === '1m' || interval === '2m' || interval === '5m' || 
+                    interval === '15m' || interval === '30m' || interval === '60m' || 
+                    interval === '1h';
+                    
+  // 过滤数据 - 如果是分时图，只保留最新一天的数据
+  let chartQuotes = currentChartData.quotes.map((quote: any) => ({
     date: quote.date,
     close: Number(quote.close),
   }));
+  
+  if (isIntraday && chartQuotes.length > 0) {
+    // 获取最新数据点的日期
+    const latestDate = new Date(chartQuotes[chartQuotes.length - 1].date);
+    const latestDay = latestDate.setHours(0, 0, 0, 0); // 设置为当天的00:00:00
+    
+    // 只保留当天的数据
+    chartQuotes = chartQuotes.filter((quote: {date: string, close: number}) => {
+      const quoteDate = new Date(quote.date);
+      const quoteDay = quoteDate.setHours(0, 0, 0, 0);
+      return quoteDay === latestDay;
+    });
+  }
+  
+  console.log('chartQuotes==>', chartQuotes);
   
   // 获取最新价格
   const price = currentQuoteData.regularMarketPrice || 0;
