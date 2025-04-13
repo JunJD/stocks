@@ -7,14 +7,19 @@ interface MinuteData {
   time: string; // 时间，格式为 "HH:MM"
   price: number; // 价格
   volume: number; // 成交量
+  amount: number; // 成交额
   date: string; // 日期，格式为 "YYYY-MM-DD"
 }
 
 interface MinuteComparisonChartProps {
   symbol?: string; // 证券代码，默认为上证50
+  displayType?: 'price' | 'amount' | 'volume'; // 展示数据类型：点位、成交额或成交量
 }
 
-export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteComparisonChartProps) {
+export default function MinuteComparisonChart({ 
+  symbol = "1.000016", 
+  displayType = 'price' 
+}: MinuteComparisonChartProps) {
   const [todayData, setTodayData] = useState<MinuteData[]>([]);
   const [yesterdayData, setYesterdayData] = useState<MinuteData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -28,10 +33,10 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
 
     setLoading(true);
     setError(null);
-
+    
     try {
       // 直接连接东方财富SSE接口
-      const url = new URL('https://10.push2his.eastmoney.com/api/qt/stock/trends2/sse');
+      const url = new URL(`https://${displayType==='price'? 10: 9}.push2his.eastmoney.com/api/qt/stock/trends2/sse`);
       url.searchParams.append('fields1', 'f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f17');
       url.searchParams.append('fields2', 'f51,f52,f53,f54,f55,f56,f57,f58');
       url.searchParams.append('mpi', '1000');
@@ -41,6 +46,7 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
       url.searchParams.append('iscr', '0');
       url.searchParams.append('iscca', '0');
       url.searchParams.append('wbp2u', '2165355837413214|0|1|0|web');
+      url.searchParams.append('displayType', displayType);
       
       const eventSource = new EventSource(url.toString());
       eventSourceRef.current = eventSource;
@@ -106,11 +112,13 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
       const time = dateTimeParts[1];
       const price = parseFloat(parts[2]); // 当前价格
       const volume = parseInt(parts[5]); // 成交量
+      const amount = parseFloat(parts[6]); // 成交额
       
       const minuteData: MinuteData = {
         time,
         price,
         volume,
+        amount,
         date
       };
       
@@ -130,22 +138,40 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
     const times = todayData.map(item => item.time);
     
     // 准备Y轴数据
-    const todayPrices = todayData.map(item => item.price);
-    const yesterdayPrices = [];
+    const todayValues = todayData.map(item => {
+      if (displayType === 'amount') return item.amount;
+      if (displayType === 'volume') return item.volume;
+      return item.price; // 默认展示点位
+    });
+    const yesterdayValues = [];
     
     // 将昨日数据匹配到今天的时间点上
     for (const time of times) {
       const yesterdayItem = yesterdayData.find(item => item.time === time);
-      yesterdayPrices.push(yesterdayItem ? yesterdayItem.price : null);
+      if (displayType === 'amount') {
+        yesterdayValues.push(yesterdayItem ? yesterdayItem.amount : null);
+      } else if (displayType === 'volume') {
+        yesterdayValues.push(yesterdayItem ? yesterdayItem.volume : null);
+      } else {
+        yesterdayValues.push(yesterdayItem ? yesterdayItem.price : null);
+      }
     }
     
     // 获取标题中显示的日期
     const todayDate = todayData.length > 0 ? todayData[0].date : '';
     const yesterdayDate = yesterdayData.length > 0 ? yesterdayData[0].date : '';
     
+    // 获取Y轴标题
+    let yAxisTitle = '点位';
+    if (displayType === 'amount') {
+      yAxisTitle = '成交额';
+    } else if (displayType === 'volume') {
+      yAxisTitle = '成交量';
+    }
+    
     return {
       title: {
-        text: `${todayDate} vs ${yesterdayDate} 指数分时对比`,
+        text: `${todayDate} vs ${yesterdayDate} 指数${yAxisTitle}对比`,
         left: 'center'
       },
       tooltip: {
@@ -164,12 +190,12 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
             if (param.seriesName === '今日') {
               html += `<div>
                 <span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span>
-                今日: ${param.value || '-'}
+                今日${yAxisTitle}: ${param.value || '-'}
               </div>`;
             } else if (param.seriesName === '昨日') {
               html += `<div>
                 <span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span>
-                昨日: ${param.value || '-'}
+                昨日${yAxisTitle}: ${param.value || '-'}
               </div>`;
             }
           });
@@ -205,6 +231,7 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
       yAxis: {
         type: 'value',
         scale: true,
+        name: yAxisTitle,
         splitLine: {
           lineStyle: {
             type: 'dashed'
@@ -215,7 +242,7 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
         {
           name: '今日',
           type: 'line',
-          data: todayPrices,
+          data: todayValues,
           symbol: 'none',
           sampling: 'average',
           itemStyle: {
@@ -247,7 +274,7 @@ export default function MinuteComparisonChart({ symbol = "1.000016" }: MinuteCom
         {
           name: '昨日',
           type: 'line',
-          data: yesterdayPrices,
+          data: yesterdayValues,
           symbol: 'none',
           sampling: 'average',
           itemStyle: {

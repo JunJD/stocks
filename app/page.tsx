@@ -98,13 +98,14 @@ export default async function Home({
         <div className="flex flex-col gap-6 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">成交额分析</CardTitle>
+              <CardTitle className="text-lg">上证50 成交额分析</CardTitle>
             </CardHeader>
             <CardContent>
               <Suspense fallback={<div>加载中...</div>}>
                 <div className="grid gap-6">
+                  <MinuteComparisonChart displayType={'amount'}/>
                   {DEFAULT_INDICES.map((index) => (
-                    <div className="bg-white rounded-lg shadow p-4" key={index.symbol}>
+                    <div className="rounded-lg shadow p-4" key={index.symbol}>
                       <h2 className="text-lg font-semibold mb-4">{index.shortName}</h2>
                       <MinuteComparisonChart symbol={index.symbol} />
                     </div>
@@ -114,6 +115,8 @@ export default async function Home({
             </CardContent>
           </Card>
         </div>
+
+        
       </div>
     </div>
   )

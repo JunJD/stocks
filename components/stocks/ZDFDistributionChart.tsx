@@ -128,7 +128,7 @@ const ZDFDistributionChart: React.FC = () => {
     const flatPercent = ((flat_count / total_count) * 100).toFixed(2);
     
     return (
-      <div className="grid grid-cols-3 gap-4 mb-4 bg-white p-4 rounded-lg shadow">
+      <div className="grid grid-cols-3 gap-4 mb-4 p-4 rounded-lg shadow">
         <div className="text-center">
           <div className="text-sm text-gray-500">上涨家数</div>
           <div className="text-xl font-bold text-red-500">{up_count} 家</div>
