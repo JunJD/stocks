@@ -235,14 +235,19 @@ function GraphSlider({ data, width, height, top, state, dispatch }: any) {
   const maxDate = new Date(data[data.length - 1].date)
   
   // 根据数据范围选择合适的时间格式
-  const formatTime = (date: Date) => {
-    const diffDays = Math.floor((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (diffDays <= 1) {
+  const formatTime = (date: Date, interval: Interval) => {
+    // 对于分钟和小时级别的间隔使用时:分
+    if (interval === '1m' || interval === '2m' || interval === '5m' || 
+        interval === '15m' || interval === '30m' || interval === '60m' || 
+        interval === '1h') {
       return date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0')
-    } else if (diffDays <= 30) {
+    }
+    // 对于天级别间隔使用月/日
+    else if (interval === '1d' || interval === '5d') {
       return (date.getMonth() + 1) + '/' + date.getDate()
-    } else {
+    }
+    // 对于更长间隔使用完整格式
+    else {
       return (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear().toString().substr(2, 2)
     }
   }
@@ -412,11 +417,11 @@ function GraphSlider({ data, width, height, top, state, dispatch }: any) {
           numTicks={getTickCount()}
           tickFormat={(value) => {
             const date = new Date(value)
-            return formatTime(date)
+            return formatTime(date, '1m')
           }}
           stroke="#888"
           tickStroke="#888"
-          label="日期"
+          label="时间"
           labelClassName="text-xs fill-gray-500 font-medium"
           labelOffset={15}
           hideAxisLine={false}
@@ -465,7 +470,7 @@ function GraphSlider({ data, width, height, top, state, dispatch }: any) {
   )
 }
 
-export default function AreaClosedChart({ chartQuotes }: { chartQuotes: any[] }) {
+export default function AreaClosedChart({ chartQuotes, interval }: { chartQuotes: any[], interval: Interval }) {
   const last = chartQuotes[chartQuotes.length - 1]
 
   const initialState = {
@@ -517,6 +522,7 @@ export default function AreaClosedChart({ chartQuotes }: { chartQuotes: any[] })
                 top={0}
                 state={state}
                 dispatch={dispatch}
+                interval={interval}
               />
             )}
           </ParentSize>

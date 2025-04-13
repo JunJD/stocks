@@ -72,7 +72,7 @@ export default function ClientMarketsChart({
         </div>
       </div>
       <div className="h-full w-full">
-        <AreaClosedChart chartQuotes={chartQuotes} />
+        <AreaClosedChart chartQuotes={chartQuotes} interval={interval} />
       </div>
     </div>
   );
