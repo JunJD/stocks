@@ -53,7 +53,7 @@ interface StockStore {
 }
 
 // 默认市场板块
-const DEFAULT_MARKET_INDICES = [
+export const DEFAULT_MARKET_INDICES = [
   { symbol: "sh000016", shortName: "上证50" },
   { symbol: "sh000300", shortName: "沪深300" },
   { symbol: "sh000852", shortName: "中证1000" },
